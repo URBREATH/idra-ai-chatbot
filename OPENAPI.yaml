@@ -1,0 +1,443 @@
+openapi: 3.1.0
+
+info:
+title: European Metadata RAG API
+version: 1.0.0
+description: |
+Internal API for the European Metadata RAG Platform.
+
+servers:
+
+* url: /api/v1
+
+security:
+
+* bearerAuth: []
+
+tags:
+
+* name: Chat
+* name: Feedback
+* name: Ingestion
+* name: Users
+* name: Health
+
+paths:
+
+/chat:
+post:
+tags:
+- Chat
+
+```
+  summary: Submit a user message
+
+  operationId: sendMessage
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ChatRequest'
+
+  responses:
+
+    '200':
+      description: Chat response
+
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ChatResponse'
+
+    '401':
+      $ref: '#/components/responses/Unauthorized'
+```
+
+/chat/{conversationId}:
+get:
+tags:
+- Chat
+
+```
+  summary: Get conversation history
+
+  operationId: getConversation
+
+  parameters:
+
+    - name: conversationId
+      in: path
+      required: true
+
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+
+    '200':
+      description: Conversation history
+
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ConversationHistory'
+```
+
+/chat/feedback:
+post:
+tags:
+- Feedback
+
+```
+  summary: Submit chat feedback
+
+  operationId: submitFeedback
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/FeedbackRequest'
+
+  responses:
+
+    '204':
+      description: Feedback stored
+```
+
+/admin/ingestion/run:
+post:
+tags:
+- Ingestion
+
+```
+  summary: Start ingestion process
+
+  operationId: runIngestion
+
+  x-roles:
+    - SUPER_ADMIN
+    - TENANT_ADMIN
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/IngestionRequest'
+
+  responses:
+
+    '202':
+      description: Ingestion started
+
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/IngestionStartedResponse'
+```
+
+/admin/ingestion/status:
+get:
+tags:
+- Ingestion
+
+```
+  summary: Get ingestion status
+
+  operationId: ingestionStatus
+
+  x-roles:
+    - SUPER_ADMIN
+    - TENANT_ADMIN
+
+  responses:
+
+    '200':
+      description: Current ingestion status
+
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/IngestionStatus'
+```
+
+/users/me:
+get:
+tags:
+- Users
+
+```
+  summary: Get authenticated user
+
+  operationId: getCurrentUser
+
+  responses:
+
+    '200':
+      description: User profile
+
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UserProfile'
+```
+
+/health:
+get:
+tags:
+- Health
+
+```
+  summary: System health
+
+  operationId: healthCheck
+
+  security: []
+
+  responses:
+
+    '200':
+      description: Service status
+
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/HealthResponse'
+```
+
+components:
+
+securitySchemes:
+
+```
+bearerAuth:
+  type: http
+  scheme: bearer
+  bearerFormat: JWT
+```
+
+responses:
+
+```
+Unauthorized:
+  description: Authentication required
+```
+
+schemas:
+
+```
+ChatRequest:
+  type: object
+
+  required:
+    - message
+
+  properties:
+
+    message:
+      type: string
+      minLength: 1
+      maxLength: 5000
+
+    conversationId:
+      type: string
+      format: uuid
+
+ChatResponse:
+  type: object
+
+  required:
+    - answer
+    - sources
+    - conversationId
+
+  properties:
+
+    answer:
+      type: string
+
+    conversationId:
+      type: string
+      format: uuid
+
+    sources:
+      type: array
+
+      items:
+        $ref: '#/components/schemas/SourceReference'
+
+SourceReference:
+  type: object
+
+  required:
+    - title
+    - datasetId
+
+  properties:
+
+    title:
+      type: string
+
+    datasetId:
+      type: string
+
+    publisher:
+      type: string
+
+    url:
+      type: string
+      format: uri
+
+    entityType:
+      type: string
+
+      enum:
+        - Dataset
+        - DistributionDCAT-AP
+        - Catalog
+        - Organization
+        - DataService
+
+FeedbackRequest:
+  type: object
+
+  required:
+    - conversationId
+    - rating
+
+  properties:
+
+    conversationId:
+      type: string
+      format: uuid
+
+    rating:
+      type: string
+
+      enum:
+        - positive
+        - negative
+
+IngestionRequest:
+  type: object
+
+  properties:
+
+    fullReindex:
+      type: boolean
+      default: false
+
+IngestionStartedResponse:
+  type: object
+
+  properties:
+
+    status:
+      type: string
+      example: started
+
+IngestionStatus:
+  type: object
+
+  properties:
+
+    running:
+      type: boolean
+
+    processed:
+      type: integer
+
+    remaining:
+      type: integer
+
+    startedAt:
+      type: string
+      format: date-time
+
+UserProfile:
+  type: object
+
+  required:
+    - id
+    - tenantId
+    - roles
+
+  properties:
+
+    id:
+      type: string
+
+    tenantId:
+      type: string
+
+    roles:
+      type: array
+
+      items:
+        type: string
+
+        enum:
+          - SUPER_ADMIN
+          - TENANT_ADMIN
+          - USER
+          - READ_ONLY
+
+ConversationHistory:
+  type: object
+
+  properties:
+
+    conversationId:
+      type: string
+      format: uuid
+
+    messages:
+      type: array
+
+      items:
+        $ref: '#/components/schemas/ConversationMessage'
+
+ConversationMessage:
+  type: object
+
+  properties:
+
+    role:
+      type: string
+
+      enum:
+        - user
+        - assistant
+
+    content:
+      type: string
+
+    createdAt:
+      type: string
+      format: date-time
+
+HealthResponse:
+  type: object
+
+  properties:
+
+    status:
+      type: string
+
+    mongo:
+      type: string
+
+    chroma:
+      type: string
+
+    ollama:
+      type: string
+```
