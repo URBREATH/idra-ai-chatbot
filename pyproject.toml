@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "idra-ai-chatbot"
+version = "1.0.0"
+description = "Local Multi-Tenant RAG Platform for European Metadata"
+authors = ["Team"]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.110.0"
+uvicorn = "^0.27.0"
+motor = "^0.4"
+chromadb = "^0.4.22"
+httpx = "^0.27.0"
+pydantic = "^2.6.0"
+pydantic-settings = "^2.2.0"
+python-dotenv = "^1.0.0"
+structlog = "^24.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+pytest-asyncio = "^0.23.0"
+pytest-mock = "^3.12.0"
+ruff = "^0.2.0"
+mypy = "^1.8.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
