@@ -52,7 +52,7 @@ Key characteristics:
 | Inference Engine | Ollama                 |
 | Embeddings       | mxbai-embed-large      |
 | LLM              | enggpt-2-16b-a3b       |
-| Scheduler        | node-cron              |
+| Scheduler        | cron                  |
 | Evaluation       | RAGAS                  |
 
 ---

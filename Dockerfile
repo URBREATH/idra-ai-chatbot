@@ -1,33 +1,21 @@
-# Use official Node.js LTS image
-FROM node:20-alpine AS builder
+# Use official Python image
+FROM python:3.12-slim AS base
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files and install dependencies
-COPY package.json package-lock.json* .
-RUN npm ci --legacy-peer-deps
+# Install system dependencies (if needed)
+RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code
-COPY src ./src
-COPY tsconfig.json ./tsconfig.json
-
-# Build Python
-RUN npm run build
-
-# Production image
-FROM node:20-alpine
-WORKDIR /app
-
-# Copy built files from builder stage
-COPY --from=builder /app/dist ./dist
-COPY package.json .
-
-# Install only production dependencies (if any additional runtime deps are needed)
-RUN npm ci --only=production --legacy-peer-deps
+COPY . .
 
 # Expose port (default 3000)
 EXPOSE 3000
 
-# Use PM2 to run the app (fallback to node if PM2 not installed)
-CMD ["node", "dist/index.js"]
+# Run FastAPI with uvicorn
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3000"]
