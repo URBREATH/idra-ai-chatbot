@@ -2,72 +2,24 @@
 
 ```text
 app/
-
-├── app.module.ts
-
-├── common/
-│   ├── constants/
-│   ├── exceptions/
-│   ├── interceptors/
-│   ├── guards/
-│   ├── decorators/
-│   └── utils/
-
-├── auth/
-│   ├── keycloak/
-│   ├── guards/
-│   ├── dto/
-│   └── auth.module.ts
-
-├── chat/
-│   ├── controllers/
-│   ├── services/
-│   ├── dto/
-│   └── chat.module.ts
-
-├── retrieval/
-│   ├── embeddings/
-│   ├── reranker/
-│   ├── vector-search/
-│   └── retrieval.module.ts
-
+├── main.py
 ├── ingestion/
-│   ├── extractors/
-│   ├── enrichers/
-│   ├── chunking/
-│   ├── embeddings/
-│   ├── chroma/
-│   └── ingestion.module.ts
-
+│   └── service.py
+├── retrieval/
+│   └── __init__.py
 ├── chroma/
-│   ├── collections/
-│   ├── repositories/
-│   └── chroma.module.ts
-
+│   ├── client.py
+│   └── __init__.py
 ├── ollama/
-│   ├── embeddings/
-│   ├── llm/
-│   └── ollama.module.ts
-
+│   └── client.py
 ├── mongodb/
-│   ├── repositories/
-│   ├── entities/
-│   └── mongodb.module.ts
-
+│   ├── client.py
+│   └── repositories.py
 ├── monitoring/
-│   ├── metrics/
-│   ├── logging/
-│   └── monitoring.module.ts
-
-├── users/
-│   ├── controllers/
-│   ├── services/
-│   └── users.module.ts
-
-└── admin/
-    ├── controllers/
-    ├── services/
-    └── admin.module.ts
+│   └── __init__.py
+├── chat/
+│   └── __init__.py
+└── ... (additional packages as needed)
 ```
 
 ---

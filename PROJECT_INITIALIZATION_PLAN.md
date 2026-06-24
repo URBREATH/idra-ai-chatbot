@@ -6,7 +6,7 @@ This document outlines the steps to initialize the Local Multi-Tenant RAG Platfo
 
 Ensure the following are installed on your system:
 
-- Python (>=18.x)
+- Python (>=3.12)
 - pPoetry or Poetry (we'll use pnom)
 - Docker and Docker Compose
 - Git
@@ -33,25 +33,25 @@ Ensure the following are installed on your system:
 
 2. Install core dependencies:
    ```bash
-   pPoetry add express mongoose @langchain/core @langchain/community @langchain/ollama chromadb
+   poetry add fastapi motor langchain chromadb
    ```
 
 3. Install development dependencies:
    ```bash
-   pPoetry add -D python @types/node @types/express @types/mongoose eslint prettier eslint-config-prettier eslint-plugin-prettier
+   poetry add -D ruff mypy pytest
    ```
 
 4. Create Python configuration:
    ```bash
-   npx tsc --init
+   python -m venv .venv
    ```
    Adjust `tsconfig.json` as needed (set `outDir` to `./dist`, `rootDir` to `./src`, etc.)
 
 5. Configure ESLint and Prettier:
    ```bash
-   npx eslint --init
+   ruff init
    ```
-   Choose appropriate options (ES6+, Node, etc.)
+   Choose appropriate options for Python (PEP8, etc.)
 
 ## Step 3: Create Folder Structure
 
@@ -59,60 +59,24 @@ Create the directory structure as specified in `FOLDER_STRUCTURE.md`:
 
 ```
 app/
-├── app.module.ts
-├── common/
-│   ├── constants/
-│   ├── exceptions/
-│   ├── interceptors/
-│   ├── guards/
-│   ├── decorators/
-│   └── utils/
-├── auth/
-│   ├── keycloak/
-│   ├── guards/
-│   ├── dto/
-│   └── auth.module.ts
-├── chat/
-│   ├── controllers/
-│   ├── services/
-│   ├── dto/
-│   └── chat.module.ts
-├── retrieval/
-│   ├── embeddings/
-│   ├── reranker/
-│   ├── vector-search/
-│   └── retrieval.module.ts
+├── main.py
 ├── ingestion/
-│   ├── extractors/
-│   ├── enrichers/
-│   ├── chunking/
-│   ├── embeddings/
-│   ├── chroma/
-│   └── ingestion.module.ts
+│   └── service.py
+├── retrieval/
+│   └── __init__.py
 ├── chroma/
-│   ├── collections/
-│   ├── repositories/
-│   └── chroma.module.ts
+│   ├── client.py
+│   └── __init__.py
 ├── ollama/
-│   ├── embeddings/
-│   ├── llm/
-│   └── ollama.module.ts
+│   └── client.py
 ├── mongodb/
-│   ├── repositories/
-│   ├── entities/
-│   └── mongodb.module.ts
+│   ├── client.py
+│   └── repositories.py
 ├── monitoring/
-│   ├── metrics/
-│   ├── logging/
-│   └── monitoring.module.ts
-├── users/
-│   ├── controllers/
-│   ├── services/
-│   └── users.module.ts
-└── admin/
-    ├── controllers/
-    ├── services/
-    └── admin.module.ts
+│   └── __init__.py
+├── chat/
+│   └── __init__.py
+└── ... (additional packages as needed)
 ```
 
 ## Step 4: Configuration Files
@@ -136,7 +100,7 @@ OLLAMA_LLM_MODEL=enggpt-2-16b-a3b
 
 # Server
 PORT=3000
-NODE_ENV=development
+ENV=development
 
 # JWT
 JWT_SECRET=your-secret-key
@@ -182,15 +146,15 @@ volumes:
 Following the architecture and milestones from `IMPLEMENTATION_PLAN.md`, implement each module:
 
 ### Milestone 1: Infrastructure
-- Create `app.module.ts` as the entry point
-- Set up Express server
-- Configure middleware (body-parser, cors, helmet)
-- Set up environment variable loading (dotenv)
+- Create `app/main.py` as the entry point
+- Set up FastAPI server
+- Configure FastAPI middleware (CORS, security headers)
+- Set up environment variable loading (python-dotenv)
 - Create health check endpoint
 
 ### Milestone 2: Mongo Integration
 - Create MongoDB connection utility in `app/mongodb/`
-- Define Mongoose schemas for datasets, distributions, catalogs, organizations, services (based on `DATABASE_SCHEMA.md`)
+- Define MongoDB models using Motor (asynchronous ODM) for datasets, distributions, catalogs, organizations, services (based on `DATABASE_SCHEMA.md`)
 - Create repository classes for each entity type
 - Implement incremental dataset queries
 
@@ -236,7 +200,7 @@ Following the architecture and milestones from `IMPLEMENTATION_PLAN.md`, impleme
 - Isolation tests (ensure no cross-tenant data leakage)
 
 ### Milestone 9: Monitoring
-- Structured logging (winston or pino)
+- Structured logging (structlog)
 - Metrics collection (latency, counts, durations)
 - Feedback collection endpoint
 - Health checks for all services
