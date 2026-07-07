@@ -23,10 +23,10 @@
 
 ### Tasks
 
-* [ ] Mongo connection
-* [ ] Dataset repository
-* [ ] Incremental dataset query
-* [ ] Deleted dataset query
+* [x] Mongo connection
+* [x] Dataset repository
+* [x] Incremental dataset query
+* [x] Deleted dataset query
 
 ### Acceptance Criteria
 
@@ -54,11 +54,11 @@
 
 ### Tasks
 
-* [ ] Chroma client
-* [ ] Collection manager
-* [ ] Tenant collection resolver
-* [ ] Upsert service
-* [ ] Delete service
+* [x] Chroma client
+* [x] Collection manager
+* [x] Tenant collection resolver
+* [x] Upsert service
+* [x] Delete service
 
 ### Acceptance Criteria
 
@@ -70,13 +70,13 @@
 
 ### Tasks
 
-* [ ] Dataset extractor
-* [ ] Semantic enricher
-* [ ] Recursive crawler
-* [ ] Payload builder
-* [ ] Chunking engine
-* [ ] Embedding generation
-* [ ] Chroma upsert
+* [x] Dataset extractor
+* [x] Semantic enricher
+* [x] Recursive crawler
+* [x] Payload builder
+* [x] Chunking engine
+* [x] Embedding generation
+* [x] Chroma upsert
 
 ### Acceptance Criteria
 

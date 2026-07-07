@@ -31,3 +31,22 @@ def test_chroma_url_defaults():
         import app.chroma.client as chroma_client
         importlib.reload(chroma_client)
         assert chroma_client.CHROMA_URL == "http://localhost:8000"
+
+def test_delete_documents_from_collection():
+    mock_collection = MagicMock()
+    
+    from app.chroma.client import delete_documents_from_collection
+    delete_documents_from_collection(mock_collection, ["ds1", "ds2"])
+    
+    mock_collection.delete.assert_called_once()
+    call_kwargs = mock_collection.delete.call_args.kwargs
+    assert "ids" in call_kwargs
+    assert len(call_kwargs["ids"]) == 4
+
+def test_delete_documents_from_collection_empty():
+    mock_collection = MagicMock()
+    
+    from app.chroma.client import delete_documents_from_collection
+    delete_documents_from_collection(mock_collection, [])
+    
+    mock_collection.delete.assert_not_called()

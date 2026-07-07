@@ -66,19 +66,29 @@ MongoDB → Ingestion Pipeline → Embeddings → ChromaDB → Retrieval → Rer
 ## Repository Structure
 
 ```text
-/src
-    /ingestion
-    /retrieval
-    /generation
-    /tenancy
-    /api
-    /monitoring
-
+/app
+  main.py                  # FastAPI application with endpoints
+  ingestion/               # Ingestion pipeline
+    service.py             # Ingestion orchestration
+    payload_builder.py     # Builds payloads from datasets
+    semantic_enricher.py   # LLM-based semantic enrichment
+    technical_crawler.py   # Extracts SDMX technical terms
+    chunker.py             # Splits payloads into chunks
+  chroma/                  # ChromaDB integration
+    client.py              # Collection management
+  ollama/                  # Ollama API client
+    client.py              # Embedding and chat endpoints
+  mongodb/                 # MongoDB integration
+    client.py              # Database connection
+    repositories.py        # Dataset queries
+  retrieval/               # Retrieval pipeline (TODO)
+  chat/                    # Chat functionality (TODO)
+  monitoring/              # Metrics and logging (TODO)
 /docs
-    README.md
-    ARCHITECTURE.md
-    ADR.md
-    IMPLEMENTATION_PLAN.md
+  README.md
+  ARCHITECTURE.md
+  ADR.md
+  IMPLEMENTATION_PLAN.md
 ```
 
 ---

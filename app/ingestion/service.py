@@ -1,65 +1,126 @@
 import uuid
 import asyncio
-from typing import List, Dict, Any
+import logging
+import threading
+from typing import List, Dict, Any, Optional
+from datetime import datetime
+from dataclasses import dataclass, field
 
-from ..mongodb.repositories import get_datasets
+from ..mongodb.repositories import (
+    get_datasets,
+    get_datasets_since,
+    get_deleted_dataset_ids,
+    get_all_dataset_ids
+)
 from ..ollama.client import generate_embedding
-from ..chroma.client import get_tenant_collection
+from ..chroma.client import get_tenant_collection, delete_documents_from_collection
 
+logger = logging.getLogger(__name__)
 
-def ingest_tenant(tenant_id: str) -> None:
-    """Synchronously ingest datasets for a tenant.
+@dataclass
+class IngestionStatus:
+    running: bool = False
+    processed: int = 0
+    remaining: int = 0
+    last_ingestion: Optional[datetime] = None
+    start_time: Optional[datetime] = None
 
-    The function executes the asynchronous ingestion logic in a way that works
-    both when no event loop is running and when called from inside an existing
-    ``asyncio`` event loop (e.g., within ``pytest‑asyncio`` tests). It blocks until
-    the ingestion completes, ensuring that side‑effects (such as calls to the
-    collection's ``add`` method) are visible immediately after the call.
-    """
+_status: IngestionStatus = IngestionStatus()
 
-    import threading
+def get_ingestion_status() -> IngestionStatus:
+    return _status
 
-    async def _run() -> None:
-        # Retrieve all datasets for the tenant (placeholder implementation).
-        datasets: List[Dict[str, Any]] = await get_datasets()
-        collection = get_tenant_collection(tenant_id)
-
-        ids: List[str] = []
-        embeddings: List[List[float]] = []
-        metadatas: List[Dict[str, Any]] = []
-
-        for ds in datasets:
-            # Prefer title, fall back to description; skip if neither is present.
-            text = ds.get("title") or ds.get("description") or ""
-            if not text:
-                continue
-            embed = await generate_embedding(text)
-            doc_id = ds.get("_id", {}).get("id") or str(uuid.uuid4())
-            ids.append(doc_id)
-            embeddings.append(embed)
-            metadatas.append({
+async def _process_dataset(ds: Dict[str, Any], tenant_id: str) -> List[Dict[str, Any]]:
+    from .payload_builder import build_payload
+    from .chunker import chunk_payload
+    
+    dataset_id = ds.get("_id", {}).get("id")
+    if not dataset_id:
+        dataset_id = str(uuid.uuid4())
+    
+    payload = await build_payload(ds)
+    chunks = await chunk_payload(payload, dataset_id)
+    
+    results = []
+    for chunk in chunks:
+        embed = await generate_embedding(chunk["text"])
+        results.append({
+            "id": chunk["chunk_id"],
+            "embedding": embed,
+            "metadata": {
                 "tenant_id": tenant_id,
-                "dataset_id": doc_id,
+                "dataset_id": dataset_id,
+                "chunk_id": chunk["chunk_id"],
                 "title": ds.get("title"),
                 "publisher": ds.get("publisher"),
-            })
+            }
+        })
+    
+    return results
 
-        # Insert the accumulated records into the tenant‑specific collection.
+async def _delete_from_collection(collection, dataset_ids: List[str]) -> None:
+    delete_documents_from_collection(collection, dataset_ids)
+
+async def _run_incremental(tenant_id: str, full_reindex: bool = False) -> Dict[str, int]:
+    collection = get_tenant_collection(tenant_id)
+    
+    if full_reindex:
+        dataset_ids = await get_all_dataset_ids(tenant_id)
+        await _delete_from_collection(collection, dataset_ids)
+    
+    last_ingestion = _status.last_ingestion or datetime.min
+    new_datasets = await get_datasets_since(tenant_id, last_ingestion)
+    deleted_ids = await get_deleted_dataset_ids(tenant_id, last_ingestion)
+    
+    all_chunks = []
+    for ds in new_datasets:
+        chunks = await _process_dataset(ds, tenant_id)
+        all_chunks.extend(chunks)
+    
+    if all_chunks:
+        ids = [c["id"] for c in all_chunks]
+        embeddings = [c["embedding"] for c in all_chunks]
+        metadatas = [c["metadata"] for c in all_chunks]
         collection.add(ids=ids, embeddings=embeddings, metadatas=metadatas)
+    
+    return {
+        "processed": len(all_chunks),
+        "deleted": len(deleted_ids),
+        "total_datasets": len(new_datasets)
+    }
 
-    # Helper that runs ``_run`` in a fresh event loop.
-    def _run_sync() -> None:
-        asyncio.run(_run())
-
+def ingest_tenant(tenant_id: str, full_reindex: bool = False) -> Dict[str, int]:
+    global _status
+    
+    _status.running = True
+    _status.start_time = datetime.now()
+    _status.processed = 0
+    _status.remaining = 0
+    
+    logger.info(f"Starting ingestion for tenant {tenant_id}, full_reindex={full_reindex}")
+    
+    async def _run_sync() -> Dict[str, int]:
+        return await _run_incremental(tenant_id, full_reindex)
+    
     try:
-        # If no loop is running in the current thread, ``asyncio.run`` works.
-        asyncio.get_running_loop()
+        loop = asyncio.get_running_loop()
     except RuntimeError:
-        # No active loop – safe to run directly.
-        _run_sync()
+        result = asyncio.run(_run_sync())
     else:
-        # An event loop is already active (e.g., pytest‑asyncio). Run the
-        # coroutine in a separate thread to avoid ``asyncio.run`` conflicts.
-        thread = threading.Thread(target=_run_sync, daemon=True)
+        result_container = {"value": None}
+        
+        def run_in_thread():
+            result_container["value"] = asyncio.run(_run_sync())
+        
+        thread = threading.Thread(target=run_in_thread, daemon=True)
         thread.start()
         thread.join()
+        result = result_container["value"]
+    
+    _status.last_ingestion = datetime.now()
+    _status.running = False
+    _status.processed = result["processed"]
+    
+    logger.info(f"Ingestion completed for tenant {tenant_id}: {result}")
+    
+    return result

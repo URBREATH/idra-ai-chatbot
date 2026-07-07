@@ -12,10 +12,16 @@ async def generate_embedding(text: str, model: str = os.getenv("OLLAMA_EMBEDDING
         data = resp.json()
         return data.get("embedding", [])
 
-async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MODEL", "enggpt-2-16b-a3b")) -> str:
+async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MODEL", "enggpt-2-16b-a3b"), temperature: float = 0.0) -> str:
     async with httpx.AsyncClient() as client:
-        resp = await client.post(f"{BASE_URL}/api/chat", json={"model": model, "messages": [{"role": "user", "content": prompt}]})
+        resp = await client.post(
+            f"{BASE_URL}/api/chat",
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "options": {"temperature": temperature}
+            }
+        )
         resp.raise_for_status()
         data = resp.json()
-        # Adjust according to actual Ollama response format
         return data.get("message", {}).get("content", "")
