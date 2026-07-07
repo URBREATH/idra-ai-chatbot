@@ -7,10 +7,12 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env
+      - .env.production
     depends_on:
       - mongodb
       - chromadb
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
   mongodb:
@@ -36,3 +38,7 @@ services:
 volumes:
   mongodb_data:
   chromadb_data:
+
+networks:
+  default:
+    name: rag_network
