@@ -1,5 +1,5 @@
 import os
-from chromadb import Client as ChromaClient
+from chromadb import HttpClient as ChromaClient
 from typing import List
 
 CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
@@ -11,7 +11,7 @@ _client = None
 def get_client() -> ChromaClient:
     global _client
     if _client is None:
-        _client = ChromaClient(host=CHROMA_URL)
+        _client = ChromaClient(host=CHROMA_HOST, port=CHROMA_PORT)
     return _client
 
 def get_tenant_collection(tenant_id: str):

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 import logging
 
-load_dotenv()
+load_dotenv('.env.test')
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

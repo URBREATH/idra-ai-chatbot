@@ -7,23 +7,9 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env.production
+      - .env.test
     depends_on:
-      - mongodb
       - chromadb
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: unless-stopped
-
-  mongodb:
-    image: mongo:6.0
-    container_name: rag_mongodb
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    environment:
-      MONGO_INITDB_DATABASE: rag_platform
     restart: unless-stopped
 
   chromadb:
@@ -36,7 +22,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  mongodb_data:
   chromadb_data:
 
 networks:

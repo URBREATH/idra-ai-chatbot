@@ -4,7 +4,7 @@ from typing import List
 
 from ..ollama.client import generate_completion
 
-MODEL = os.getenv("OLLAMA_LLM_MODEL", "enggpt-2-16b-a3b")
+MODEL = os.getenv("OLLAMA_LLM_MODEL", "qwen2.5:7b")
 TEMPERATURE = 0.1
 MAX_TERMS = 20
 
