@@ -9,7 +9,17 @@ services:
     env_file:
       - .env.test
     depends_on:
+      - mongo
       - chromadb
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    container_name: orion_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
     restart: unless-stopped
 
   chromadb:
@@ -22,6 +32,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  mongo_data:
   chromadb_data:
 
 networks:
