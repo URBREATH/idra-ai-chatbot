@@ -72,8 +72,9 @@ async def run_ingestion(
     tenant_id: str = "default-tenant",
     _: str = Depends(require_admin_authorization),
 ):
-    result = ingest_tenant(tenant_id, full_reindex=request.fullReindex)
+    result = await ingest_tenant(tenant_id, full_reindex=request.fullReindex)
     return {"status": "started", "result": result}
+
 
 @app.get("/admin/ingestion/status")
 async def get_ingestion_status_endpoint():

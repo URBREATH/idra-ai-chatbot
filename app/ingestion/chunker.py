@@ -1,8 +1,9 @@
 import re
 from typing import List, Dict, Any
 
-MAX_TOKENS = 512
-MAX_CHARS = MAX_TOKENS * 4
+MAX_TOKENS = 300
+CHARS_PER_TOKEN = 2
+MAX_CHARS = MAX_TOKENS * CHARS_PER_TOKEN
 
 SEP = "[SEP]"
 
@@ -12,6 +13,10 @@ DIMENSION_PATTERN = re.compile(r'\b([A-Z_]{2,}(?:\d+)?)\b')
 def _estimate_tokens(text: str) -> int:
     return len(text) // 4
 
+def _hard_truncate(text: str) -> str:
+    if len(text) <= MAX_CHARS:
+        return text
+    return text[:MAX_CHARS].rsplit(" ", 1)[0]
 
 def _split_technical_block(technical: str) -> List[str]:
     """
@@ -41,12 +46,12 @@ def _split_technical_block(technical: str) -> List[str]:
     return dimensions
 
 
-def _build_chunk(semantic: str, technical_part: str, description: str, dataset_id: str, chunk_num: int) -> Dict[str, Any]:
+def _build_chunk(semantic, technical_part, description, dataset_id, chunk_num):
     text = f"[SEMANTIC BLOCK] {semantic} {SEP} [TECHNICAL BLOCK] {technical_part} {SEP} [DESCRIPTION BLOCK] {description}"
     return {
         "dataset_id": dataset_id,
         "chunk_id": f"{dataset_id}_chunk_{chunk_num}",
-        "text": text
+        "text": _hard_truncate(text)
     }
 
 

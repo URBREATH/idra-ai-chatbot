@@ -2,8 +2,9 @@ from typing import Dict, Any
 from .semantic_enricher import enrich
 from .technical_crawler import crawl
 
-MAX_TOKENS = 512
-MAX_CHARS = MAX_TOKENS * 4
+MAX_TOKENS = 400
+CHARS_PER_TOKEN = 3
+MAX_CHARS = MAX_TOKENS * CHARS_PER_TOKEN
 
 SEP = "[SEP]"
 

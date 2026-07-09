@@ -5,12 +5,12 @@ from datetime import datetime
 db = get_database()
 
 async def get_datasets(filter_query: Dict[str, Any] = None) -> List[Dict[str, Any]]:
-    collection = db["datasets"]
-    cursor = collection.find(filter_query or {})
-    return await cursor.to_list(length=1000)
+    collection = db["entities"]
+    cursor = collection.find(filter_query or {}).limit(50)
+    return await cursor.to_list(length=50)
 
 async def get_datasets_since(tenant_id: str, last_ingestion: datetime) -> List[Dict[str, Any]]:
-    collection = db["datasets"]
+    collection = db["entities"]
     filter_query = {
         "tenant_id": tenant_id,
         "updatedAt": {"$gte": last_ingestion}
@@ -19,7 +19,7 @@ async def get_datasets_since(tenant_id: str, last_ingestion: datetime) -> List[D
     return await cursor.to_list(length=1000)
 
 async def get_datasets_by_ids(dataset_ids: List[str]) -> List[Dict[str, Any]]:
-    collection = db["datasets"]
+    collection = db["entities"]
     cursor = collection.find({"_id.id": {"$in": dataset_ids}})
     return await cursor.to_list(length=1000)
 
@@ -34,7 +34,7 @@ async def get_deleted_dataset_ids(tenant_id: str, last_ingestion: datetime) -> L
     return [r.get("dataset_id") for r in records]
 
 async def get_all_dataset_ids(tenant_id: str) -> List[str]:
-    collection = db["datasets"]
+    collection = db["entities"]
     cursor = collection.find({"tenant_id": tenant_id}, projection={"_id": 1})
     records = await cursor.to_list(length=1000)
     return [r.get("_id", {}).get("id") for r in records]
