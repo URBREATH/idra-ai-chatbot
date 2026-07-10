@@ -1,6 +1,5 @@
 import os
-from fastapi import FastAPI, Request, HTTPException, Depends
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Depends
 from pydantic_settings import BaseSettings
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -24,10 +23,14 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-app = FastAPI(title="European Metadata RAG Platform", version="1.0.0")
-
 from .ingestion.service import get_ingestion_status, ingest_tenant
 from .auth import require_admin_authorization
+from .chat.controllers.chat_controller import router as chat_router
+from .chat.dto.models import ChatRequest, ChatResponse, SourceReference
+
+app = FastAPI(title="European Metadata RAG Platform", version="1.0.0")
+app.include_router(chat_router)
+
 
 @app.get("/health")
 async def health():
@@ -37,25 +40,6 @@ async def health():
         "chroma": "UNKNOWN",
         "ollama": "UNKNOWN",
     }
-
-class ChatRequest(BaseModel):
-    message: str
-    conversationId: str | None = None
-
-class SourceReference(BaseModel):
-    title: str
-    datasetId: str
-    publisher: str | None = None
-    url: str | None = None
-
-class ChatResponse(BaseModel):
-    answer: str
-    sources: list[SourceReference]
-    conversationId: str | None = None
-
-@app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest, request_obj: Request):
-    raise HTTPException(status_code=501, detail="Chat endpoint not implemented yet")
 
 class IngestionRunRequest(BaseModel):
     fullReindex: bool = False

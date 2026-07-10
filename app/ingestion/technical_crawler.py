@@ -1,39 +1,36 @@
-from typing import Any, Set, Dict
+from typing import Any, Dict, List
 
-
-def _clean_key(uri_key: str) -> str:
-    # Tiene solo l'ultimo segmento della chiave URI: prende dopo l'ultimo '/'
-    # (le chiavi Orion usano '=' al posto di '.', ma a noi serve solo il nome finale)
-    return uri_key.rstrip("/").split("/")[-1]
 
 def _is_geometry(value: Any) -> bool:
-    # Un valore è una geometria GeoJSON se è un dict con 'type' e 'coordinates'
     return isinstance(value, dict) and "type" in value and "coordinates" in value
 
-def _format_value(value: Any) -> str:
+
+def _collect_terms(value: Any, terms: List[str], seen: set) -> None:
+    """Recursively walk the dataset structure collecting all string/number values."""
+    if isinstance(value, bool):
+        return
     if isinstance(value, dict):
-        # Valori strutturati semplici (es. address): concateno i sotto-valori scalari
-        parts = [str(v) for v in value.values() if isinstance(v, (str, int, float))]
-        return ", ".join(parts)
-    if isinstance(value, (str, int, float)):
-        return str(value)
-    return ""
+        if _is_geometry(value):
+            return
+        for v in value.values():
+            _collect_terms(v, terms, seen)
+    elif isinstance(value, list):
+        for item in value:
+            _collect_terms(item, terms, seen)
+    elif isinstance(value, (str, int, float)):
+        s = str(value).strip()
+        if s and s not in seen:
+            seen.add(s)
+            terms.append(s)
+
 
 async def crawl(dataset: Dict[str, Any]) -> str:
-    entity_type = _clean_key(dataset.get("_id", {}).get("type", ""))
-    parts = []
-    if entity_type:
-        parts.append(entity_type)
+    """Recursive scan of dataset structure extracting dimension names, SDMX codes,
+    labels, and nested descriptions (ARCHITECTURE.md - Technical Crawler).
 
-    attrs = dataset.get("attrs", {})
-    for raw_key, attr in attrs.items():
-        if not isinstance(attr, dict):
-            continue
-        value = attr.get("value")
-        if _is_geometry(value):        # salta le geometrie: coordinate inutili e ingombranti
-            continue
-        text_value = _format_value(value)
-        if text_value:
-            parts.append(f"{_clean_key(raw_key)}: {text_value}")
-
-    return " | ".join(parts)
+    Output: a deduplicated, space-joined string of technical terms.
+    """
+    terms: List[str] = []
+    seen: set = set()
+    _collect_terms(dataset, terms, seen)
+    return " ".join(terms)

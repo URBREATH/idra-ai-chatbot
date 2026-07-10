@@ -7,7 +7,6 @@ from datetime import datetime
 from dataclasses import dataclass, field
 
 from ..mongodb.repositories import (
-    get_datasets,
     get_datasets_since,
     get_deleted_dataset_ids,
     get_all_dataset_ids
@@ -71,56 +70,29 @@ async def _run_incremental(tenant_id: str, full_reindex: bool = False) -> Dict[s
     if full_reindex:
         dataset_ids = await get_all_dataset_ids(tenant_id)
         await _delete_from_collection(collection, dataset_ids)
-        new_datasets = await get_datasets()          # tutte le entità, nessun filtro
-        deleted_ids = []
-    else:
-        last_ingestion = _status.last_ingestion or datetime.min
-        new_datasets = await get_datasets_since(tenant_id, last_ingestion)
-        deleted_ids = await get_deleted_dataset_ids(tenant_id, last_ingestion)
 
-    all_chunks = []
-    for ds in new_datasets:
-        chunks = await _process_dataset(ds, tenant_id)
-        all_chunks.extend(chunks)
-
-    if all_chunks:
-        ids = [c["id"] for c in all_chunks]
-        embeddings = [c["embedding"] for c in all_chunks]
-        metadatas = [c["metadata"] for c in all_chunks]
-        collection.add(ids=ids, embeddings=embeddings, metadatas=metadatas)
-
-    return {
-        "processed": len(all_chunks),
-        "deleted": len(deleted_ids),
-        "total_datasets": len(new_datasets)
-    }
-    
-    if full_reindex:
-        dataset_ids = await get_all_dataset_ids(tenant_id)
-        await _delete_from_collection(collection, dataset_ids)
-    
     last_ingestion = _status.last_ingestion or datetime.min
     new_datasets = await get_datasets_since(tenant_id, last_ingestion)
     deleted_ids = await get_deleted_dataset_ids(tenant_id, last_ingestion)
-    
+
     all_chunks = []
     for ds in new_datasets:
         chunks = await _process_dataset(ds, tenant_id)
         all_chunks.extend(chunks)
-    
+
     if all_chunks:
         ids = [c["id"] for c in all_chunks]
         embeddings = [c["embedding"] for c in all_chunks]
         metadatas = [c["metadata"] for c in all_chunks]
         collection.add(ids=ids, embeddings=embeddings, metadatas=metadatas)
-    
+
     return {
         "processed": len(all_chunks),
         "deleted": len(deleted_ids),
         "total_datasets": len(new_datasets)
     }
 
-async def ingest_tenant(tenant_id: str, full_reindex: bool = False) -> Dict[str, int]:
+def ingest_tenant(tenant_id: str, full_reindex: bool = False) -> Dict[str, int]:
     global _status
 
     _status.running = True
@@ -130,7 +102,23 @@ async def ingest_tenant(tenant_id: str, full_reindex: bool = False) -> Dict[str,
 
     logger.info(f"Starting ingestion for tenant {tenant_id}, full_reindex={full_reindex}")
 
-    result = await _run_incremental(tenant_id, full_reindex)
+    async def _run_sync() -> Dict[str, int]:
+        return await _run_incremental(tenant_id, full_reindex)
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        result = asyncio.run(_run_sync())
+    else:
+        result_container = {"value": None}
+
+        def run_in_thread():
+            result_container["value"] = asyncio.run(_run_sync())
+
+        thread = threading.Thread(target=run_in_thread, daemon=True)
+        thread.start()
+        thread.join()
+        result = result_container["value"]
 
     _status.last_ingestion = datetime.now()
     _status.running = False

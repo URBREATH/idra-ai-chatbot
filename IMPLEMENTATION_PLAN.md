@@ -88,11 +88,11 @@
 
 ### Tasks
 
-* [ ] Query embedding generation
-* [ ] Metadata filtering
-* [ ] Similarity search
-* [ ] Reranking service
-* [ ] Context assembly
+* [x] Query embedding generation
+* [x] Metadata filtering
+* [x] Similarity search
+* [x] Reranking service
+* [x] Context assembly
 
 ### Acceptance Criteria
 
@@ -104,10 +104,10 @@
 
 ### Tasks
 
-* [ ] Prompt templates
-* [ ] Context injection
-* [ ] Conversation memory
-* [ ] No-result workflow
+* [x] Prompt templates
+* [x] Context injection
+* [x] Conversation memory
+* [x] No-result workflow
 
 ### Acceptance Criteria
 
