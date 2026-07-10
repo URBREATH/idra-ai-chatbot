@@ -6,7 +6,9 @@ db = get_database()
 
 async def get_datasets(filter_query: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     collection = db["entities"]
+    #cursor = collection.find(filter_query or {})
     cursor = collection.find(filter_query or {}).limit(50)
+    #return await cursor.to_list(length=1000)
     return await cursor.to_list(length=50)
 
 async def get_datasets_since(tenant_id: str, last_ingestion: datetime) -> List[Dict[str, Any]]:
