@@ -115,3 +115,23 @@ async def test_ingest_tenant_returns_result():
                         assert isinstance(result, dict)
                         assert "processed" in result
                         assert "total_datasets" in result
+
+
+@pytest.mark.asyncio
+async def test_ingest_tenant_deletes_incremental_deletes():
+    """Datasets removed from MongoDB must also be removed from ChromaDB (Bug fix)."""
+    mock_datasets = []
+    deleted_ids = ["ds-removed-1", "ds-removed-2"]
+
+    mock_collection = MagicMock()
+
+    with patch("app.ingestion.service.get_datasets_since", new=AsyncMock(return_value=mock_datasets)):
+        with patch("app.ingestion.service.get_deleted_dataset_ids", new=AsyncMock(return_value=deleted_ids)):
+            with patch("app.ingestion.service.get_all_dataset_ids", new=AsyncMock(return_value=[])):
+                with patch("app.ingestion.service.get_tenant_collection", return_value=mock_collection):
+                    with patch("app.ingestion.service.delete_documents_from_collection") as mock_delete:
+                        from app.ingestion.service import ingest_tenant
+                        ingest_tenant("tenant_abc")
+
+                        # delete must be called once for the incremental deleted_ids
+                        mock_delete.assert_called_once_with(mock_collection, deleted_ids)

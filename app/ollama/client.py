@@ -25,3 +25,19 @@ async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MO
         resp.raise_for_status()
         data = resp.json()
         return data.get("message", {}).get("content", "")
+
+
+async def generate_batch_embeddings(
+    texts: list[str],
+    model: str = os.getenv("OLLAMA_EMBEDDING_MODEL", "mxbai-embed-large"),
+) -> list[list[float]]:
+    """Generate embeddings for a list of texts sequentially.
+
+    Ollama does not expose a native batch endpoint; requests are issued one by
+    one and the results are collected in order.
+    """
+    results: list[list[float]] = []
+    for text in texts:
+        embedding = await generate_embedding(text, model=model)
+        results.append(embedding)
+    return results

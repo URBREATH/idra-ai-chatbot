@@ -134,3 +134,24 @@ async def test_get_all_dataset_ids():
         assert "ds1" in result
         assert "ds2" in result
         assert "ds3" in result
+
+
+@pytest.mark.asyncio
+async def test_get_all_dataset_ids_filters_none():
+    """Records without _id.id must be excluded from the result (Bug fix)."""
+    mock_cursor = MagicMock()
+    mock_cursor.to_list = AsyncMock(return_value=[
+        {"_id": {"id": "ds1"}},
+        {"_id": {}},             # missing id key
+        {"_id": {"id": None}},  # explicit None
+    ])
+
+    with patch("app.mongodb.repositories.db") as mock_db:
+        mock_collection = MagicMock()
+        mock_collection.find.return_value = mock_cursor
+        mock_db.__getitem__.return_value = mock_collection
+
+        from app.mongodb.repositories import get_all_dataset_ids
+        result = await get_all_dataset_ids("tenant_abc")
+
+        assert result == ["ds1"]  # only valid id survives

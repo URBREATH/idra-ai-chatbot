@@ -37,4 +37,4 @@ async def get_all_dataset_ids(tenant_id: str) -> List[str]:
     collection = db["entities"]
     cursor = collection.find({"tenant_id": tenant_id}, projection={"_id": 1})
     records = await cursor.to_list(length=1000)
-    return [r.get("_id", {}).get("id") for r in records]
+    return [r["_id"]["id"] for r in records if r.get("_id", {}).get("id") is not None]

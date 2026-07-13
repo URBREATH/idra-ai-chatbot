@@ -4,12 +4,12 @@
 
 ### Tasks
 
-* [ ] Initialize Python project (Poetry)
-* [ ] Configure Python
-* [ ] Configure Ruff
-* [ ] Configure Docker files
-* [ ] Configure process manager (e.g., gunicorn/uvicorn)
-* [ ] Configure environment management
+* [x] Initialize Python project (Poetry)
+* [x] Configure Python
+* [x] Configure Ruff
+* [x] Configure Docker files
+* [x] Configure process manager (uvicorn)
+* [x] Configure environment management
 
 ### Acceptance Criteria
 
@@ -38,10 +38,10 @@
 
 ### Tasks
 
-* [ ] Configure Ollama client
-* [ ] Embedding service
-* [ ] Chat service
-* [ ] Batch embedding support
+* [x] Configure Ollama client
+* [x] Embedding service
+* [x] Chat service
+* [x] Batch embedding support
 
 ### Acceptance Criteria
 
@@ -119,9 +119,9 @@
 
 ### Tasks
 
-* [ ] Tenant resolver
-* [ ] Collection routing
-* [ ] Isolation tests
+* [x] Tenant resolver (`app/common/guards/tenant_guard.py`)
+* [x] Collection routing
+* [x] Isolation tests
 
 ### Acceptance Criteria
 
@@ -133,9 +133,9 @@
 
 ### Tasks
 
-* [ ] Structured logging
-* [ ] Metrics collection
-* [ ] Feedback collection
+* [x] Structured logging (structlog)
+* [x] Metrics collection (`GET /metrics`)
+* [x] Feedback collection (`POST /chat/feedback` con contatori)
 
 ### Acceptance Criteria
 

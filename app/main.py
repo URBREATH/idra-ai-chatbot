@@ -5,15 +5,27 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from datetime import datetime
 import logging
+import structlog
 
 load_dotenv()
 
+structlog.configure(
+    processors=[
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.JSONRenderer(),
+    ],
+    wrapper_class=structlog.stdlib.BoundLogger,
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+)
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 class Settings(BaseSettings):
     port: int = int(os.getenv("PORT", 3000))
-    mongo_uri: str = os.getenv("MONGODB_URI")
+    mongo_uri: str = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
     chroma_host: str = os.getenv("CHROMA_HOST", "localhost")
     chroma_port: int = int(os.getenv("CHROMA_PORT", 8000))
     ollama_host: str = os.getenv("OLLAMA_HOST", "localhost")
@@ -30,6 +42,16 @@ from .chat.dto.models import ChatRequest, ChatResponse, SourceReference
 
 app = FastAPI(title="European Metadata RAG Platform", version="1.0.0")
 app.include_router(chat_router)
+
+# ---------------------------------------------------------------------------
+# In-memory metrics counters (M9 - Monitoring)
+# ---------------------------------------------------------------------------
+_metrics: dict[str, int] = {
+    "chat_requests": 0,
+    "feedback_positive": 0,
+    "feedback_negative": 0,
+    "ingestion_runs": 0,
+}
 
 
 @app.get("/health")
@@ -56,7 +78,8 @@ async def run_ingestion(
     tenant_id: str = "default-tenant",
     _: str = Depends(require_admin_authorization),
 ):
-    result = await ingest_tenant(tenant_id, full_reindex=request.fullReindex)
+    _metrics["ingestion_runs"] += 1
+    result = ingest_tenant(tenant_id, full_reindex=request.fullReindex)
     return {"status": "started", "result": result}
 
 
@@ -89,5 +112,21 @@ class FeedbackRequest(BaseModel):
 
 @app.post("/chat/feedback")
 async def submit_feedback(request: FeedbackRequest):
-    logger.info(f"Feedback received: {request.conversationId} - {request.rating}")
+    if request.rating == "positive":
+        _metrics["feedback_positive"] += 1
+    elif request.rating == "negative":
+        _metrics["feedback_negative"] += 1
+    logger.info("feedback_received", conversation_id=request.conversationId, rating=request.rating)
     return {"status": "received"}
+
+
+@app.get("/metrics")
+async def get_metrics():
+    """Expose in-memory application counters (M9 - Monitoring)."""
+    ingestion_status = get_ingestion_status()
+    return {
+        **_metrics,
+        "ingestion_running": ingestion_status.running,
+        "ingestion_processed": ingestion_status.processed,
+        "last_ingestion": ingestion_status.last_ingestion.isoformat() if ingestion_status.last_ingestion else None,
+    }

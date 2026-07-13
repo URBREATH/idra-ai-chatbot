@@ -20,10 +20,11 @@ def get_tenant_collection(tenant_id: str):
     return client.get_or_create_collection(name=collection_name)
 
 def delete_documents_from_collection(collection, dataset_ids: List[str]) -> None:
-    if not dataset_ids:
-        return
-    ids_to_delete = []
+    """Delete all chunks belonging to the given dataset IDs from the collection.
+
+    Uses a metadata `where` filter so that every chunk of a dataset is removed
+    regardless of how many chunks were produced during ingestion.
+    """
     for did in dataset_ids:
-        ids_to_delete.append(f"{did}_chunk_1")
-        ids_to_delete.append(f"{did}_chunk_2")
-    collection.delete(ids=ids_to_delete)
+        if did is not None:
+            collection.delete(where={"dataset_id": did})

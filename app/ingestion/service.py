@@ -75,6 +75,10 @@ async def _run_incremental(tenant_id: str, full_reindex: bool = False) -> Dict[s
     new_datasets = await get_datasets_since(tenant_id, last_ingestion)
     deleted_ids = await get_deleted_dataset_ids(tenant_id, last_ingestion)
 
+    if deleted_ids:
+        await _delete_from_collection(collection, deleted_ids)
+        logger.info(f"Deleted {len(deleted_ids)} datasets from ChromaDB for tenant {tenant_id}")
+
     all_chunks = []
     for ds in new_datasets:
         chunks = await _process_dataset(ds, tenant_id)
