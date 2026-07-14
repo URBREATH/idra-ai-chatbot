@@ -10,12 +10,12 @@ MAX_TERMS = 20
 
 
 def _build_prompt(text: str) -> str:
-    return f"""Analizza il seguente testo ed estrai una lista di concetti, sinonimi e termini correlati in italiano.
-Restituisci SOLO un array JSON di stringhe, senza testo aggiuntivo.
+    return f"""Analyze the following text and extract a list of concepts, synonyms and related terms in English.
+Return ONLY a JSON array of strings, with no additional text.
 
-Testo: {text}
+Text: {text}
 
-Array JSON:"""
+JSON Array:"""
 
 
 async def enrich(text: str) -> List[str]:

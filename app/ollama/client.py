@@ -7,7 +7,7 @@ BASE_URL = f"http://{OLLAMA_HOST}:{OLLAMA_PORT}"
 
 async def list_models() -> list[str]:
     async with httpx.AsyncClient() as client:
-        resp = await client.get(f"{BASE_URL}/api/tags", timeout=10.0)
+        resp = await client.get(f"{BASE_URL}/api/tags", timeout=100.0)
         resp.raise_for_status()
         data = resp.json()
         return [m["name"] for m in data.get("models", [])]
@@ -30,7 +30,7 @@ async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MO
                 "stream": False,
                 "options": {"temperature": temperature}
             },
-            timeout=120.0,
+            timeout=300.0,
         )
         resp.raise_for_status()
         data = resp.json()

@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from dataclasses import dataclass, field
 
+from .payload_builder import extract_attrs
 from ..mongodb.repositories import (
     get_datasets_since,
     get_deleted_dataset_ids,
@@ -35,14 +36,14 @@ def get_ingestion_status() -> IngestionStatus:
 async def _process_dataset(ds: Dict[str, Any], tenant_id: str) -> List[Dict[str, Any]]:
     from .payload_builder import build_payload
     from .chunker import chunk_payload
-    
-    dataset_id = ds.get("_id", {}).get("id")
-    if not dataset_id:
-        dataset_id = str(uuid.uuid4())
-    
+
+    dataset_id = ds.get("_id", {}).get("id") or str(uuid.uuid4())
+
     payload = await build_payload(ds)
     chunks = await chunk_payload(payload, dataset_id)
-    
+
+    attrs = extract_attrs(ds)   # <-- valori reali
+
     results = []
     for chunk in chunks:
         embed = await generate_embedding(chunk["text"])
@@ -51,8 +52,9 @@ async def _process_dataset(ds: Dict[str, Any], tenant_id: str) -> List[Dict[str,
             "tenant_id": tenant_id,
             "dataset_id": dataset_id,
             "chunk_id": chunk["chunk_id"],
-            "title": ds.get("title"),
-            "publisher": ds.get("publisher"),
+            "title": attrs.get("Title"),      # <-- titolo vero
+            "url": attrs.get("URL"),
+            "publisher": attrs.get("Publisher"),
         }
         metadata = {k: v for k, v in candidate_metadata.items() if v is not None}
 
@@ -60,7 +62,7 @@ async def _process_dataset(ds: Dict[str, Any], tenant_id: str) -> List[Dict[str,
             "id": chunk["chunk_id"],
             "embedding": embed,
             "metadata": metadata,
-            "document": chunk["text"]
+            "document": chunk["text"],
         })
 
     return results

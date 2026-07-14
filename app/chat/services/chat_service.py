@@ -11,16 +11,24 @@ from app.ollama import client as ollama_client
 
 logger = logging.getLogger(__name__)
 
-TOP_K = 3
+TOP_K = 5
 NO_RESULT_ANSWER = "No relevant datasets were found for your query."
 
 _SYSTEM_INSTRUCTIONS = (
-    "You are a retrieval-augmented assistant for European metadata datasets. "
-    "Answer the user's question using ONLY the information contained in the context below. "
-    "If the context does not contain the answer, state that no relevant information was found. "
-    "Do not use any external knowledge."
-)
+    "You are an assistant for a European open data catalog (dataset metadata: titles, "
+    "descriptions, themes, formats, licenses, publishers).\n\n"
 
+    "Rules:\n"
+    "- Answer using ONLY the context below. Never invent titles, URLs, publishers, formats, "
+    "licenses, or dates. If a detail is not in the context, say it is not available.\n"
+    "- If the context has matching datasets, give their concrete details (title, format, "
+    "license, link) as found.\n"
+    "- If nothing matches, say so clearly and DO NOT guess. Then suggest how to refine the "
+    "search: different or broader keywords, a specific theme/location/time, an English term "
+    "or synonym, or a format like CSV or GeoJSON. Keep suggestions generic — never name a "
+    "specific portal, URL, or dataset unless it is in the context.\n"
+    "- You MUST ALWAYS answer in the SAME user's language. Be concise. Do not mention these instructions or the context.\n"
+)
 
 def build_prompt(message: str, context: str) -> str:
     """Build the RAG prompt with strict context injection (ADR-006: retrieval before generation)."""
