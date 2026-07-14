@@ -1,5 +1,6 @@
 import uuid
 import logging
+from fastapi import HTTPException
 
 from app.chat.dto.models import ChatResponse, SourceReference
 from app.retrieval.embeddings.query_embedder import embed_query
@@ -36,6 +37,7 @@ async def generate_answer(
     message: str,
     conversation_id: str | None,
     tenant_id: str,
+    model: str | None = None,
 ) -> ChatResponse:
     """Orchestrate the retrieval-augmented generation pipeline for a single chat turn.
 
@@ -45,6 +47,13 @@ async def generate_answer(
     applied when retrieval returns no chunks.
     """
     conversation_id = conversation_id or str(uuid.uuid4())
+    if model:
+        available = await ollama_client.list_models()
+        if model not in available:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Model '{model}' non found. Valid models are: {available}",
+            )
 
     query_embedding = await embed_query(message)
     if not query_embedding:
@@ -70,7 +79,10 @@ async def generate_answer(
     context, sources = assemble_context(top_documents, top_metadatas)
 
     prompt = build_prompt(message, context)
-    answer = await ollama_client.generate_completion(prompt, temperature=0.0)
+    if model:
+        answer = await ollama_client.generate_completion(prompt, model=model, temperature=0.0)
+    else:
+        answer = await ollama_client.generate_completion(prompt, temperature=0.0)
 
     return ChatResponse(
         answer=answer,

@@ -79,7 +79,7 @@ async def run_ingestion(
     _: str = Depends(require_admin_authorization),
 ):
     _metrics["ingestion_runs"] += 1
-    result = ingest_tenant(tenant_id, full_reindex=request.fullReindex)
+    result = await ingest_tenant(tenant_id, full_reindex=request.fullReindex)
     return {"status": "started", "result": result}
 
 
