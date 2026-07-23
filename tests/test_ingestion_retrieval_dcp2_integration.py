@@ -8,15 +8,14 @@ class FakeChromaCollection:
     def __init__(self):
         self.records = []
 
-    def add(self, ids, embeddings, metadatas):
-        for doc_id, emb, meta in zip(ids, embeddings, metadatas):
+    def upsert(self, ids, embeddings, metadatas, documents):
+        for doc_id, emb, meta, doc in zip(ids, embeddings, metadatas, documents):
             self.records.append(
                 {
                     "id": doc_id,
                     "embedding": emb,
                     "metadata": meta,
-                    # In this mock, we synthesize a compact document payload from metadata.
-                    "document": f"{meta.get('title', '')} {meta.get('publisher', '')}".strip(),
+                    "document": doc,
                 }
             )
 
@@ -117,7 +116,7 @@ async def test_dcp2_like_ingestion_and_retrieval_flow():
                                 from app.retrieval.vector_search.searcher import vector_search
                                 from app.retrieval.context.context_assembler import assemble_context
 
-                                ingestion_result = ingest_tenant("tenant_dcp2")
+                                ingestion_result = await ingest_tenant("tenant_dcp2")
 
                                 assert ingestion_result["total_datasets"] == 1
                                 assert ingestion_result["processed"] >= 1

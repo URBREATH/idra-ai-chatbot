@@ -113,3 +113,50 @@ MongoDB → Ingestion Pipeline → Embeddings → ChromaDB → Retrieval → Rer
 * MongoDB
 
 See ARCHITECTURE.md for implementation details.
+
+---
+
+## Local Setup with Docker
+
+### Prerequisites
+
+* Docker Desktop (Compose v2 enabled)
+* At least 16 GB RAM for local tests (more for larger Ollama models)
+
+### 1. Create local env file
+
+Copy `.env.docker.example` to `.env.docker` and adjust values if needed.
+
+### 2. Bootstrap local stack (recommended on Windows)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\local\bootstrap.ps1
+```
+
+This command will:
+
+* start MongoDB, ChromaDB, Ollama and API
+* create `.env.docker` if missing
+* pull Ollama embedding/LLM models configured in `.env.docker`
+
+### 3. Manual startup (alternative)
+
+```powershell
+copy .env.docker.example .env.docker
+docker compose -f docker-compose.local.yml --env-file .env.docker up -d --build
+docker exec idra_ollama_local ollama pull mxbai-embed-large
+docker exec idra_ollama_local ollama pull enggpt-2-16b-a3b
+```
+
+### 4. Verify services
+
+* API health: `http://localhost:3000/health`
+* Metrics: `http://localhost:3000/metrics`
+* Chroma service: `http://localhost:8000`
+* Ollama tags: `http://localhost:11434/api/tags`
+
+### 5. Stop stack
+
+```powershell
+docker compose -f docker-compose.local.yml --env-file .env.docker down
+```

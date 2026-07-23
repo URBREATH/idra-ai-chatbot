@@ -1,0 +1,68 @@
+[
+  {
+    "name": "employment-rate-query",
+    "tenant_id": "tenant_golden",
+    "query": "tasso di occupazione giovanile in Italia",
+    "query_embedding": [0.9, 0.8, 0.7, 0.6],
+    "expected_dataset_id": "ds_employment_youth",
+    "records": [
+      {
+        "id": "ds_employment_youth_chunk_1",
+        "embedding": [0.9, 0.8, 0.7, 0.6],
+        "metadata": {
+          "tenant_id": "tenant_golden",
+          "dataset_id": "ds_employment_youth",
+          "title": "Occupazione giovanile",
+          "publisher": "ISTAT",
+          "url": "https://example.org/employment"
+        },
+        "document": "Occupazione giovanile in Italia per classe di et\u00e0 e territorio"
+      },
+      {
+        "id": "ds_noise_chunk_1",
+        "embedding": [0.1, 0.2, 0.3, 0.4],
+        "metadata": {
+          "tenant_id": "tenant_golden",
+          "dataset_id": "ds_noise",
+          "title": "Inquinamento acustico",
+          "publisher": "Comune",
+          "url": "https://example.org/noise"
+        },
+        "document": "Mappa del rumore urbano"
+      }
+    ]
+  },
+  {
+    "name": "air-quality-query",
+    "tenant_id": "tenant_golden",
+    "query": "dataset PM10 qualit\u00e0 dell'aria",
+    "query_embedding": [0.2, 0.3, 0.4, 0.5],
+    "expected_dataset_id": "ds_air_quality_pm10",
+    "records": [
+      {
+        "id": "ds_air_quality_pm10_chunk_1",
+        "embedding": [0.2, 0.3, 0.4, 0.5],
+        "metadata": {
+          "tenant_id": "tenant_golden",
+          "dataset_id": "ds_air_quality_pm10",
+          "title": "Qualit\u00e0 dell'aria PM10",
+          "publisher": "ARPA",
+          "url": "https://example.org/pm10"
+        },
+        "document": "Serie storica PM10 e NO2"
+      },
+      {
+        "id": "ds_water_chunk_1",
+        "embedding": [0.8, 0.8, 0.8, 0.8],
+        "metadata": {
+          "tenant_id": "tenant_golden",
+          "dataset_id": "ds_water",
+          "title": "Qualit\u00e0 acque",
+          "publisher": "Regione",
+          "url": "https://example.org/water"
+        },
+        "document": "Monitoraggio acque superficiali"
+      }
+    ]
+  }
+]

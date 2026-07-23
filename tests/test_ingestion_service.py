@@ -17,10 +17,10 @@ async def test_ingest_tenant_processes_datasets():
                 with patch("app.ingestion.service.generate_embedding", new=AsyncMock(return_value=[0.1] * 1024)):
                     with patch("app.ingestion.service.get_tenant_collection", return_value=mock_collection):
                         from app.ingestion.service import ingest_tenant
-                        result = ingest_tenant("tenant_abc")
+                        result = await ingest_tenant("tenant_abc")
                         
                         assert result["processed"] >= 1
-                        mock_collection.add.assert_called_once()
+                        mock_collection.upsert.assert_called_once()
 
 @pytest.mark.asyncio
 async def test_ingest_tenant_skips_empty_text():
@@ -37,9 +37,9 @@ async def test_ingest_tenant_skips_empty_text():
                 with patch("app.ingestion.service.generate_embedding", new=AsyncMock(return_value=[0.1] * 1024)):
                     with patch("app.ingestion.service.get_tenant_collection", return_value=mock_collection):
                         from app.ingestion.service import ingest_tenant
-                        ingest_tenant("tenant_abc")
+                        await ingest_tenant("tenant_abc")
                         
-                        call_args = mock_collection.add.call_args
+                        call_args = mock_collection.upsert.call_args
                         assert len(call_args[1]["ids"]) >= 1
 
 @pytest.mark.asyncio
@@ -56,9 +56,9 @@ async def test_ingest_tenant_uses_dataset_id():
                 with patch("app.ingestion.service.generate_embedding", new=AsyncMock(return_value=[0.1] * 1024)):
                     with patch("app.ingestion.service.get_tenant_collection", return_value=mock_collection):
                         from app.ingestion.service import ingest_tenant
-                        ingest_tenant("tenant_xyz")
+                        await ingest_tenant("tenant_xyz")
                         
-                        call_args = mock_collection.add.call_args
+                        call_args = mock_collection.upsert.call_args
                         ids = call_args[1]["ids"]
                         assert any("urn:ngsi-ld:Dataset:123" in str(id) for id in ids)
 
@@ -75,7 +75,7 @@ async def test_ingest_tenant_creates_correct_collection_name():
                         mock_get_collection.return_value = mock_collection
                         
                         from app.ingestion.service import ingest_tenant
-                        ingest_tenant("my_tenant")
+                        await ingest_tenant("my_tenant")
                         
                         mock_get_collection.assert_called_once_with("my_tenant")
 
@@ -92,7 +92,7 @@ async def test_ingest_tenant_full_reindex_deletes_existing():
                 with patch("app.ingestion.service.get_tenant_collection", return_value=mock_collection):
                     with patch("app.ingestion.service.delete_documents_from_collection") as mock_delete:
                         from app.ingestion.service import ingest_tenant
-                        result = ingest_tenant("tenant_abc", full_reindex=True)
+                        result = await ingest_tenant("tenant_abc", full_reindex=True)
                         
                         mock_delete.assert_called_once()
 
@@ -110,7 +110,7 @@ async def test_ingest_tenant_returns_result():
                 with patch("app.ingestion.service.generate_embedding", new=AsyncMock(return_value=[0.1] * 1024)):
                     with patch("app.ingestion.service.get_tenant_collection", return_value=mock_collection):
                         from app.ingestion.service import ingest_tenant
-                        result = ingest_tenant("tenant_abc")
+                        result = await ingest_tenant("tenant_abc")
                         
                         assert isinstance(result, dict)
                         assert "processed" in result
@@ -131,7 +131,7 @@ async def test_ingest_tenant_deletes_incremental_deletes():
                 with patch("app.ingestion.service.get_tenant_collection", return_value=mock_collection):
                     with patch("app.ingestion.service.delete_documents_from_collection") as mock_delete:
                         from app.ingestion.service import ingest_tenant
-                        ingest_tenant("tenant_abc")
+                        await ingest_tenant("tenant_abc")
 
                         # delete must be called once for the incremental deleted_ids
                         mock_delete.assert_called_once_with(mock_collection, deleted_ids)

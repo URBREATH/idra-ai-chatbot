@@ -148,10 +148,10 @@
 
 ### Tasks
 
-* [ ] Golden dataset creation
+* [x] Golden dataset creation
 * [ ] RAGAS evaluation
-* [ ] Performance testing
-* [ ] Load testing
+* [x] Performance testing
+* [x] Load testing
 
 ### Acceptance Criteria
 

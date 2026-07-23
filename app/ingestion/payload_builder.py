@@ -23,7 +23,7 @@ FIELD_LABELS = {
 JUNK = {"", '\\"\\"', '""', "N/A"}
 
 # se True, arricchisce il blocco semantico con l'LLM (lento in ingestione)
-ENABLE_ENRICHMENT = False #da mettere nelle variabili d'ambiente
+ENABLE_ENRICHMENT = True
 
 
 def _truncate(text: str, max_chars: int) -> str:
@@ -57,19 +57,22 @@ async def build_payload(dataset: Dict[str, Any]) -> str:
     dataset_id = dataset.get("_id", {}).get("id", "")
     attrs = extract_attrs(dataset)
 
-    title = attrs.get("Title", "")
-    description = attrs.get("Description", "")
+    title = attrs.get("Title") or str(dataset.get("title", "")).strip()
+    description = attrs.get("Description") or str(dataset.get("description", "")).strip()
 
     # SEMANTIC BLOCK: title + description (optional LLM enrichment)
     semantic_text = f"{title} {description}".strip()
     if ENABLE_ENRICHMENT and semantic_text:
         semantic_terms = await enrich(semantic_text)
-        semantic_content = " ".join(semantic_terms) if semantic_terms else (title or "N/A")
+        semantic_content = " ".join(semantic_terms) if semantic_terms else semantic_text
     else:
         semantic_content = semantic_text or "N/A"
 
-    # TECHNICAL BLOCK: real attribute values, NOT schema URIs
+    # TECHNICAL BLOCK: merge flattened attrs and crawler output
     tech_parts = [f"{k}: {v}" for k, v in attrs.items()]
+    crawled = await crawl(dataset)
+    if crawled:
+        tech_parts.append(crawled)
     technical_content = " | ".join(tech_parts) if tech_parts else "N/A"
 
     # DESCRIPTION BLOCK

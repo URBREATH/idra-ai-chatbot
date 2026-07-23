@@ -70,8 +70,8 @@ async def test_get_datasets_since():
         
         mock_collection.find.assert_called_once()
         call_args = mock_collection.find.call_args[0][0]
-        assert call_args["tenant_id"] == "tenant_abc"
-        assert "$gte" in call_args["updatedAt"]
+        assert call_args["_id.servicePath"] == "/"
+        assert "$gte" in call_args["modDate"]
 
 @pytest.mark.asyncio
 async def test_get_datasets_by_ids():

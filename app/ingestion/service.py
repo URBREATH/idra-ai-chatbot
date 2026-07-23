@@ -52,9 +52,9 @@ async def _process_dataset(ds: Dict[str, Any], tenant_id: str) -> List[Dict[str,
             "tenant_id": tenant_id,
             "dataset_id": dataset_id,
             "chunk_id": chunk["chunk_id"],
-            "title": attrs.get("Title"),      # <-- titolo vero
+            "title": attrs.get("Title") or ds.get("title"),
             "url": attrs.get("URL"),
-            "publisher": attrs.get("Publisher"),
+            "publisher": attrs.get("Publisher") or ds.get("publisher"),
         }
         metadata = {k: v for k, v in candidate_metadata.items() if v is not None}
 
