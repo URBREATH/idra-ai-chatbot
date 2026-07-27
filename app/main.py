@@ -8,6 +8,7 @@ from datetime import datetime
 import logging
 import structlog
 
+
 load_dotenv()
 
 structlog.configure(
