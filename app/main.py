@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
 from pydantic_settings import BaseSettings
 from pydantic import BaseModel
@@ -39,8 +40,22 @@ from .ingestion.service import get_ingestion_status, ingest_tenant
 from .auth import require_admin_authorization
 from .chat.controllers.chat_controller import router as chat_router
 from .chat.dto.models import ChatRequest, ChatResponse, SourceReference
+from .conversation import repositories as conversation_repositories
 
-app = FastAPI(title="European Metadata RAG Platform", version="1.0.0")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # Initialize MongoDB indexes during application startup.
+    logger.info("Initializing conversation history indexes...")
+    await conversation_repositories.initialize_conversation_indexes()
+    logger.info("Conversation indexes initialized successfully")
+    yield
+
+
+app = FastAPI(
+    title="European Metadata RAG Platform",
+    version="1.0.0",
+    lifespan=lifespan,
+)
 app.include_router(chat_router)
 
 # ---------------------------------------------------------------------------

@@ -8,6 +8,7 @@ from app.retrieval.vector_search.searcher import vector_search
 from app.retrieval.reranker.reranker import rerank
 from app.retrieval.context.context_assembler import assemble_context
 from app.ollama import client as ollama_client
+from app.conversation import services as conversation_services
 
 logger = logging.getLogger(__name__)
 
@@ -30,38 +31,97 @@ _SYSTEM_INSTRUCTIONS = (
     "- You MUST ALWAYS answer in the SAME user's language. Be concise. Do not mention these instructions or the context.\n"
 )
 
-def build_prompt(message: str, context: str) -> str:
-    """Build the RAG prompt with strict context injection (ADR-006: retrieval before generation)."""
-    context_block = context if context else "(no context available)"
-    return (
-        f"{_SYSTEM_INSTRUCTIONS}\n\n"
-        f"Context:\n{context_block}\n\n"
-        f"Question: {message}\n\n"
-        f"Answer:"
-    )
+
+def build_prompt(
+    message: str,
+    retrieval_context: str,
+    conversation_context: str | None = None,
+) -> str:
+    """
+    Build the RAG prompt with conversation history + retrieval context injection.
+    
+    Structure:
+    1. System instructions
+    2. [Optional] Conversation history (previous messages)
+    3. [New] Retrieval context (dataset metadata)
+    4. Current question
+    
+    Args:
+        message: Current user message
+        retrieval_context: Context from vector search (dataset metadata)
+        conversation_context: Optional previous messages formatted as "User: ... / Assistant: ..."
+    """
+    retrieval_block = retrieval_context if retrieval_context else "(no context available)"
+    
+    prompt_parts = [_SYSTEM_INSTRUCTIONS]
+    
+    # Include conversation history if available
+    if conversation_context:
+        prompt_parts.append("Previous conversation:")
+        prompt_parts.append(conversation_context)
+        prompt_parts.append("")
+    
+    # Add retrieval context
+    prompt_parts.append("Context (from dataset catalog):")
+    prompt_parts.append(retrieval_block)
+    prompt_parts.append("")
+    
+    # Add current question
+    prompt_parts.append(f"Question: {message}")
+    prompt_parts.append("")
+    prompt_parts.append("Answer:")
+    
+    return "\n".join(prompt_parts)
 
 
 async def generate_answer(
     message: str,
     conversation_id: str | None,
     tenant_id: str,
+    user_id: str | None = None,
     model: str | None = None,
 ) -> ChatResponse:
-    """Orchestrate the retrieval-augmented generation pipeline for a single chat turn.
+    """
+    Orchestrate the retrieval-augmented generation pipeline for a single chat turn.
 
-    Steps follow ARCHITECTURE.md: query embedding -> tenant-isolated vector search ->
-    cross-encoder reranking -> top-k context assembly -> LLM generation with
-    temperature 0 for determinism. A zero-hallucination no-result workflow is
-    applied when retrieval returns no chunks.
+    Steps follow ARCHITECTURE.md: 
+    1. Load conversation context from MongoDB
+    2. Query embedding -> tenant-isolated vector search
+    3. Cross-encoder reranking -> top-k context assembly
+    4. LLM generation with conversation history + retrieval context
+    5. Temperature 0 for determinism
+    
+    A zero-hallucination no-result workflow is applied when retrieval returns no chunks.
+    
+    Args:
+        message: User's question
+        conversation_id: UUID of conversation (auto-generated if None)
+        tenant_id: Tenant identifier
+        user_id: Keycloak user ID (optional, for conversation context)
+        model: Specific model to use (optional)
     """
     conversation_id = conversation_id or str(uuid.uuid4())
+    
     if model:
         available = await ollama_client.list_models()
         if model not in available:
             raise HTTPException(
                 status_code=400,
-                detail=f"Model '{model}' non found. Valid models are: {available}",
+                detail=f"Model '{model}' not found. Valid models are: {available}",
             )
+
+    # Load previous conversation context (if exists)
+    conversation_context = ""
+    if user_id:
+        try:
+            conversation_context = await conversation_services.get_context_for_llm(
+                conversation_id=conversation_id,
+                tenant_id=tenant_id,
+                limit=10,  # Last 10 messages for context
+            )
+        except Exception as e:
+            logger.warning(f"Could not load conversation context: {e}")
+            conversation_context = ""
 
     query_embedding = await embed_query(message)
     if not query_embedding:
@@ -86,7 +146,9 @@ async def generate_answer(
 
     context, sources = assemble_context(top_documents, top_metadatas)
 
-    prompt = build_prompt(message, context)
+    # Build prompt with both conversation history AND retrieval context
+    prompt = build_prompt(message, context, conversation_context)
+    
     if model:
         answer = await ollama_client.generate_completion(prompt, model=model, temperature=0.0)
     else:

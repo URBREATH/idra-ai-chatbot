@@ -2,6 +2,8 @@ import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
 from fastapi.testclient import TestClient
 
+from app.chat.dto.models import ChatResponse
+
 
 def test_tenant_isolation_no_cross_tenant_data():
     with patch("app.chroma.client.get_client") as mock_get_client:
@@ -73,13 +75,19 @@ def test_chat_endpoint_uses_tenant_header():
     """Ensure the chat endpoint passes the X-Tenant-Id header through to the service."""
     from app.main import app
 
-    with patch("app.chat.services.chat_service.embed_query", new=AsyncMock(return_value=[])):
-        with TestClient(app) as client:
-            response = client.post(
-                "/chat",
-                json={"message": "hello"},
-                headers={"X-Tenant-Id": "my-tenant"},
-            )
+    mocked_answer = ChatResponse(answer="ok", sources=[])
+
+    with patch("app.main.conversation_repositories.initialize_conversation_indexes", new=AsyncMock()):
+        with patch("app.chat.controllers.chat_controller.extract_user_id_from_keycloak_token", return_value="user-1"):
+            with patch("app.chat.controllers.chat_controller.generate_answer", new=AsyncMock(return_value=mocked_answer)):
+                with patch("app.chat.controllers.chat_controller.conversation_services.append_user_message", new=AsyncMock()):
+                    with patch("app.chat.controllers.chat_controller.conversation_services.append_assistant_message", new=AsyncMock()):
+                        with TestClient(app) as client:
+                            response = client.post(
+                                "/chat",
+                                json={"message": "hello"},
+                                headers={"X-Tenant-Id": "my-tenant", "Authorization": "Bearer test-token"},
+                            )
     # No cross-tenant data should bleed; response must be a valid ChatResponse shape
     assert response.status_code == 200
     body = response.json()

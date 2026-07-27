@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
+from fastapi import HTTPException
 
 
 def test_build_prompt_injects_context_and_enforces_no_hallucination():
@@ -18,6 +19,20 @@ def test_build_prompt_empty_context_uses_no_result_prompt():
 
     prompt = build_prompt("Show datasets about air quality", "")
     assert "Show datasets about air quality" in prompt
+
+
+def test_build_prompt_includes_previous_conversation_when_available():
+    from app.chat.services.chat_service import build_prompt
+
+    prompt = build_prompt(
+        "And in Milan?",
+        "Dataset: Air quality by city",
+        "User: Show air quality in Rome\nAssistant: Here are the results",
+    )
+
+    assert "Previous conversation:" in prompt
+    assert "User: Show air quality in Rome" in prompt
+    assert "Question: And in Milan?" in prompt
 
 
 @pytest.mark.asyncio
@@ -112,3 +127,46 @@ async def test_generate_answer_uses_temperature_zero_for_determinism():
 
     call_kwargs = mock_llm.call_args.kwargs
     assert call_kwargs.get("temperature") == 0.0
+
+
+@pytest.mark.asyncio
+async def test_generate_answer_injects_conversation_context_in_prompt():
+    with patch("app.chat.services.chat_service.conversation_services.get_context_for_llm", new=AsyncMock(return_value="User: hello\nAssistant: hi")):
+        with patch("app.chat.services.chat_service.embed_query", new=AsyncMock(return_value=[0.2] * 4)):
+            with patch("app.chat.services.chat_service.vector_search", return_value={
+                "documents": [["dataset chunk"]],
+                "metadatas": [[{"dataset_id": "ds1", "title": "Dataset 1", "publisher": "EU", "url": "https://example.org"}]],
+                "distances": [[0.1]],
+            }):
+                with patch("app.chat.services.chat_service.rerank", return_value=[0]):
+                    with patch("app.chat.services.chat_service.assemble_context", return_value=("Dataset 1 context", [])):
+                        with patch("app.ollama.client.generate_completion", new=AsyncMock(return_value="ok")) as mock_llm:
+                            from app.chat.services.chat_service import generate_answer
+
+                            await generate_answer(
+                                message="next question",
+                                conversation_id="conv-1",
+                                tenant_id="tenant-a",
+                                user_id="user-1",
+                            )
+
+    prompt_arg = mock_llm.await_args.args[0]
+    assert "Previous conversation:" in prompt_arg
+    assert "User: hello" in prompt_arg
+
+
+@pytest.mark.asyncio
+async def test_generate_answer_raises_400_for_unknown_model():
+    with patch("app.ollama.client.list_models", new=AsyncMock(return_value=["llama3", "mistral"])):
+        from app.chat.services.chat_service import generate_answer
+
+        with pytest.raises(HTTPException) as exc:
+            await generate_answer(
+                message="hello",
+                conversation_id="conv-1",
+                tenant_id="tenant-a",
+                model="unknown-model",
+            )
+
+    assert exc.value.status_code == 400
+    assert "not found" in str(exc.value.detail)

@@ -67,9 +67,9 @@ class TestSemanticEnricher:
             await enrich("occupazione giovanile in Italia")
 
         assert "occupazione giovanile in Italia" in captured_prompt["prompt"]
-        assert "concetti" in captured_prompt["prompt"].lower()
-        assert "sinonimi" in captured_prompt["prompt"].lower()
-        assert "termini correlati" in captured_prompt["prompt"].lower()
+        assert "concepts" in captured_prompt["prompt"].lower()
+        assert "synonyms" in captured_prompt["prompt"].lower()
+        assert "related terms" in captured_prompt["prompt"].lower()
 
     @pytest.mark.asyncio
     async def test_enrich_returns_unique_terms(self):
