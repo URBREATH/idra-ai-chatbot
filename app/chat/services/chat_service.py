@@ -81,27 +81,8 @@ async def generate_answer(
     user_id: str | None = None,
     model: str | None = None,
 ) -> ChatResponse:
-    """
-    Orchestrate the retrieval-augmented generation pipeline for a single chat turn.
-
-    Steps follow ARCHITECTURE.md: 
-    1. Load conversation context from MongoDB
-    2. Query embedding -> tenant-isolated vector search
-    3. Cross-encoder reranking -> top-k context assembly
-    4. LLM generation with conversation history + retrieval context
-    5. Temperature 0 for determinism
-    
-    A zero-hallucination no-result workflow is applied when retrieval returns no chunks.
-    
-    Args:
-        message: User's question
-        conversation_id: UUID of conversation (auto-generated if None)
-        tenant_id: Tenant identifier
-        user_id: Keycloak user ID (optional, for conversation context)
-        model: Specific model to use (optional)
-    """
     conversation_id = conversation_id or str(uuid.uuid4())
-    
+
     if model:
         available = await ollama_client.list_models()
         if model not in available:
@@ -110,23 +91,54 @@ async def generate_answer(
                 detail=f"Model '{model}' not found. Valid models are: {available}",
             )
 
-    # Load previous conversation context (if exists)
+    # 1) Carico la cronologia PREGRESSA (prima di salvare il messaggio corrente,
+    #    altrimenti la domanda attuale finirebbe duplicata nel contesto)
     conversation_context = ""
     if user_id:
         try:
             conversation_context = await conversation_services.get_context_for_llm(
                 conversation_id=conversation_id,
                 tenant_id=tenant_id,
-                limit=10,  # Last 10 messages for context
+                limit=10,
             )
         except Exception as e:
             logger.warning(f"Could not load conversation context: {e}")
             conversation_context = ""
 
+    # 2) Salvo il messaggio dell'utente (DOPO aver letto il contesto pregresso)
+    if user_id:
+        try:
+            await conversation_services.append_user_message(
+                conversation_id=conversation_id,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                message_content=message,
+            )
+        except Exception as e:
+            logger.warning(f"Could not persist user message: {e}")
+
+    # Helper: salva la risposta dell'assistente e costruisce la ChatResponse
+    async def _respond(answer_text: str, sources_list: list) -> ChatResponse:
+        if user_id:
+            try:
+                await conversation_services.append_assistant_message(
+                    conversation_id=conversation_id,
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    message_content=answer_text,
+                )
+            except Exception as e:
+                logger.warning(f"Could not persist assistant message: {e}")
+        return ChatResponse(
+            answer=answer_text,
+            sources=sources_list,
+            conversationId=conversation_id,
+        )
+
     query_embedding = await embed_query(message)
     if not query_embedding:
         logger.info("Empty query embedding; returning no-result workflow")
-        return ChatResponse(answer=NO_RESULT_ANSWER, sources=[], conversationId=conversation_id)
+        return await _respond(NO_RESULT_ANSWER, [])
 
     raw_results = vector_search(tenant_id, query_embedding)
     documents: list[str] = (raw_results.get("documents") or [[]])[0]
@@ -134,8 +146,8 @@ async def generate_answer(
     distances: list[float] = (raw_results.get("distances") or [[]])[0]
 
     if not documents:
-        logger.info("No chunks retrieved for tenant %s; returning no-result workflow", tenant_id)
-        return ChatResponse(answer=NO_RESULT_ANSWER, sources=[], conversationId=conversation_id)
+        logger.info("No chunks retrieved for tenant %s; no-result workflow", tenant_id)
+        return await _respond(NO_RESULT_ANSWER, [])
 
     top_indices = rerank(message, documents, metadatas, distances, top_k=TOP_K)
     if not top_indices:
@@ -143,19 +155,13 @@ async def generate_answer(
 
     top_documents = [documents[i] for i in top_indices]
     top_metadatas = [metadatas[i] for i in top_indices]
-
     context, sources = assemble_context(top_documents, top_metadatas)
 
-    # Build prompt with both conversation history AND retrieval context
     prompt = build_prompt(message, context, conversation_context)
-    
+
     if model:
         answer = await ollama_client.generate_completion(prompt, model=model, temperature=0.0)
     else:
         answer = await ollama_client.generate_completion(prompt, temperature=0.0)
 
-    return ChatResponse(
-        answer=answer,
-        sources=sources,
-        conversationId=conversation_id,
-    )
+    return await _respond(answer, sources)
