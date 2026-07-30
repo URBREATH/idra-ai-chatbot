@@ -51,7 +51,7 @@ Key characteristics:
 | Vector Database  | ChromaDB               |
 | Inference Engine | Ollama                 |
 | Embeddings       | mxbai-embed-large      |
-| LLM              | enggpt-2-16b-a3b       |
+| LLM              | mixtral                |
 | Scheduler        | cron                  |
 | Evaluation       | RAGAS                  |
 
@@ -145,7 +145,7 @@ This command will:
 copy .env.docker.example .env.docker
 docker compose -f docker-compose.local.yml --env-file .env.docker up -d --build
 docker exec idra_ollama_local ollama pull mxbai-embed-large
-docker exec idra_ollama_local ollama pull enggpt-2-16b-a3b
+docker exec idra_ollama_local ollama pull mixtral
 ```
 
 ### 4. Verify services

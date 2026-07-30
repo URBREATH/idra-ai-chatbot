@@ -80,7 +80,7 @@ Daily at 03:00
 Model:
 
 ```text
-enggpt-2-16b-a3b
+mixtral
 ```
 
 Purpose:
@@ -244,7 +244,7 @@ LLM generation
 Model:
 
 ```text
-enggpt-2-16b-a3b:q4_k_m
+mixtral:q4_k_m
 ```
 
 Parameters:

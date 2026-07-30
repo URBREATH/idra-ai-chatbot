@@ -1,5 +1,13 @@
 # Project Initialization Plan
 
+> **Documento storico**: descrive il piano *iniziale* di avvio del progetto e non
+> riflette necessariamente lo stato attuale del codice. In particolare il nome
+> del database MongoDB e' realmente `orion` (non `rag_platform`) con un'unica
+> collection `entities` popolata da un Orion Context Broker esterno, non collection
+> separate per tipo. Per lo schema e la configurazione realmente in uso vedere
+> [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md), [README.md](README.md) e
+> [README_PRODUZIONE.md](README_PRODUZIONE.md).
+
 This document outlines the steps to initialize the Local Multi-Tenant RAG Platform for European Metadata from scratch.
 
 ## Prerequisites
@@ -96,7 +104,7 @@ CHROMA_PORT=8000
 OLLAMA_HOST=localhost
 OLLAMA_PORT=11434
 OLLAMA_EMBEDDING_MODEL=mxbai-embed-large
-OLLAMA_LLM_MODEL=enggpt-2-16b-a3b
+OLLAMA_LLM_MODEL=mixtral
 
 # Server
 PORT=3000
@@ -161,7 +169,7 @@ Following the architecture and milestones from `IMPLEMENTATION_PLAN.md`, impleme
 ### Milestone 3: Ollama Integration
 - Create Ollama client service in `app/ollama/`
 - Implement embedding service using `mxbai-embed-large`
-- Implement chat service using `enggpt-2-16b-a3b`
+- Implement chat service using `mixtral`
 - Add batch embedding support
 
 ### Milestone 4: ChromaDB Integration

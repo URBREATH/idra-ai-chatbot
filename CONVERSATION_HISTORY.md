@@ -331,7 +331,7 @@ KEYCLOAK_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8
 KEYCLOAK_REALM=master
 
 # MongoDB (existing)
-MONGODB_URI=mongodb://mongo:27017/rag_platform
+MONGODB_URI=mongodb://mongo:27017/orion
 
 # Other services
 CHROMA_HOST=chroma
@@ -345,7 +345,7 @@ OLLAMA_PORT=11434
 # Leave KEYCLOAK_PUBLIC_KEY unset
 # Tokens will be decoded without verification (permissive)
 
-MONGODB_URI=mongodb://localhost:27017/rag_platform
+MONGODB_URI=mongodb://localhost:27017/orion
 CHROMA_HOST=localhost
 CHROMA_PORT=8000
 OLLAMA_HOST=localhost
@@ -834,7 +834,7 @@ app/
 **Solution**:
 1. Check `MONGODB_URI` env var is correct
 2. Verify MongoDB is running: `mongosh`
-3. Check database name: `use rag_platform` or configured name
+3. Check database name: `use orion` (default DB name used in `.env`/`.env.docker`)
 4. Verify collection: `db.conversations.find()`
 5. Enable debug logging: `structlog` level to DEBUG
 

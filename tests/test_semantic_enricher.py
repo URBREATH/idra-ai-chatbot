@@ -50,7 +50,7 @@ class TestSemanticEnricher:
         with patch("app.ingestion.semantic_enricher.generate_completion", new=capture_completion):
             await enrich("test query")
 
-        assert captured["model"] == "enggpt-2-16b-a3b"
+        assert captured["model"] == "mixtral"
         assert captured["temperature"] == 0.1
 
     @pytest.mark.asyncio

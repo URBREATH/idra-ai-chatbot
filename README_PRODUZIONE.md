@@ -35,27 +35,36 @@ curl -fsSL https://ollama.com/install.sh | sh
 
 ## 3. Configurazione Ambiente
 
-### 3.1 File `.env.production`
+### 3.1 File d'ambiente
 
-Il file `.env.production` viene caricato automaticamente dal servizio `app` di `docker-compose.yml`
-(tramite `env_file: .env.production`). Creare il file nella root del progetto:
+> **Attenzione (verificato nel codice)**: il `docker-compose.yml` presente nella root
+> del progetto carica realmente `env_file: .env.test` per il servizio `app` (non
+> `.env.production` come indicato in precedenza in questo documento). Il compose
+> avvia anche un servizio `ollama` proprio (container `ollama`, volume `ollama_data`),
+> quindi **non** è più necessario `host.docker.internal`/`extra_hosts` per Ollama.
+> Prima di andare in produzione:
+> - rinominare il file creato qui sotto in `.env.test` (per usarlo così com'è),
+>   **oppure** modificare `docker-compose.yml` per puntare a `.env.production`;
+> - eseguire il pull dei modelli nel container `ollama` (vedi sezione 4).
+
+Creare il file nella root del progetto:
 
 ```bash
 # App
 PORT=3000
 
-# MongoDB
-MONGODB_URI=mongodb://rag_mongodb:27017/rag_platform
+# MongoDB (nome container reale: orion_mongo, database: orion)
+MONGODB_URI=mongodb://orion_mongo:27017/orion
 
-# ChromaDB
+# ChromaDB (nome container reale: rag_chroma)
 CHROMA_HOST=rag_chroma
 CHROMA_PORT=8000
 
-# Ollama (in esecuzione sull'host)
-OLLAMA_HOST=host.docker.internal
+# Ollama (servizio proprio del compose, container/servizio: ollama)
+OLLAMA_HOST=ollama
 OLLAMA_PORT=11434
 OLLAMA_EMBEDDING_MODEL=mxbai-embed-large
-OLLAMA_LLM_MODEL=enggpt-2-16b-a3b
+OLLAMA_LLM_MODEL=mixtral
 
 # JWT (CAMBIARE IN PRODUZIONE)
 JWT_SECRET=<generare con: openssl rand -hex 32>
@@ -69,28 +78,31 @@ DEFAULT_TENANT_ID=default-tenant
 ```
 
 > Note:
-> - Su Linux, `host.docker.internal` viene risolto tramite `extra_hosts: ["host.docker.internal:host-gateway"]`
->   già configurato nel servizio `app` di `docker-compose.yml`.
-> - Per Ollama è necessario esporre l'host (`0.0.0.0`) impostando `OLLAMA_HOST=0.0.0.0:11434` sull'host.
+> - Ollama gira come servizio containerizzato (`ollama`) definito in `docker-compose.yml`:
+>   nessuna configurazione di rete aggiuntiva (`extra_hosts`/`host.docker.internal`) necessaria.
+> - Se si preferisce usare un'istanza Ollama già installata sull'host (es. per sfruttare una
+>   GPU non passata al container), impostare `OLLAMA_HOST=host.docker.internal`, rimuovere il
+>   servizio `ollama` da `docker-compose.yml` e aggiungere
+>   `extra_hosts: ["host.docker.internal:host-gateway"]` al servizio `app` (necessario su Linux).
 
 ---
 
 ## 4. Preparazione Modelli Ollama
 
 ```bash
-# Embedding model
-ollama pull mxbai-embed-large
+# Embedding model (nel container ollama del compose)
+docker exec ollama ollama pull mxbai-embed-large
 
 # LLM principale
-ollama pull enggpt-2-16b-a3b
+docker exec ollama ollama pull mixtral
 
 # Verifica
-ollama list
+docker exec ollama ollama list
 ```
 
-> I modelli vengono scaricati nella directory `~/.ollama/models` sull'host.
-> Il container `app` accede a Ollama via rete (`host.docker.internal:11434`),
-> pertanto non è necessario montare i modelli all'interno del container.
+> I modelli vengono scaricati nel volume Docker `ollama_data` (persistente tra i riavvii).
+> Il container `app` accede a Ollama via rete Docker interna (`ollama:11434`),
+> pertanto non è necessario montare i modelli all'interno del container `app`.
 
 ---
 
@@ -114,37 +126,45 @@ docker-compose logs -f app
 | Servizio | Porta | Descrizione |
 |----------|-------|-------------|
 | idra_ai_chatbot | 3000 | FastAPI App |
-| rag_mongodb | 27017 | MongoDB |
+| orion_mongo | 27017 | MongoDB |
 | rag_chroma | 8000 | ChromaDB |
 
 ---
 
 ## 6. Inizializzazione Database
 
-### 6.1 MongoDB - Import Dati
+> **Attenzione (verificato nel codice)**: questa non è una collection creata/gestita
+> da questo applicativo. `app/mongodb/repositories.py` **legge soltanto** (nessun
+> insert/update) dalle collection `entities` e `deleted_datasets` del database
+> `orion`, che devono già esistere e contenere entità NGSI-LD nel formato descritto
+> in `DATABASE_SCHEMA.md` (tipicamente popolate da un **FIWARE Orion Context
+> Broker** esterno, non da un file `datasets.json` generico). Il blocco seguente
+> è utile solo per creare dati di **test locale** con lo schema corretto.
+
+### 6.1 MongoDB - Dati di Test (schema Orion/NGSI-LD)
 
 ```bash
-# Copia il file JSON con i dataset nel container
-docker cp datasets.json rag_mongodb:/datasets.json
+# Copia il file JSON con le entità di test nel container (schema NGSI-LD, vedi DATABASE_SCHEMA.md)
+docker cp entities.json orion_mongo:/entities.json
 
-# Import dei documenti nella collection `datasets`
-docker exec -i rag_mongodb mongoimport \
-  --db rag_platform --collection datasets \
-  --file /datasets.json --jsonArray
+# Import dei documenti nella collection `entities`
+docker exec -i orion_mongo mongoimport \
+  --db orion --collection entities \
+  --file /entities.json --jsonArray
 
-# Creazione indici (incluso tenant_id, usato dalle query in app/mongodb/repositories.py)
-docker exec -i rag_mongodb mongosh rag_platform <<EOF
-db.datasets.createIndex({ "_id.type": 1 })
-db.datasets.createIndex({ "publisher": 1 })
-db.datasets.createIndex({ "theme": 1 })
-db.datasets.createIndex({ "tenant_id": 1, "updatedAt": 1 })
-db.deleted_datasets.createIndex({ "tenant_id": 1, "deletedAt": 1 })
-db.chat_feedback.createIndex({ "tenantId": 1 })
+# Indici consigliati per le query usate in app/mongodb/repositories.py
+docker exec -i orion_mongo mongosh orion <<EOF
+db.entities.createIndex({ "_id.servicePath": 1 })
+db.entities.createIndex({ "_id.id": 1 })
+db.entities.createIndex({ "modDate": 1 })
+db.deleted_datasets.createIndex({ "servicePath": 1, "deletedAt": 1 })
 EOF
 ```
 
-> Il file `datasets.json` non è incluso nel repository: deve essere fornito dall'operatore.
-> Ogni documento deve contenere i campi `tenant_id` e `updatedAt` per supportare l'ingestion incrementale.
+> Ogni documento deve avere `_id` come oggetto `{ id, type, servicePath }` (non un
+> `ObjectId` semplice) e i campi `attrs`, `modDate`, `creDate` come da schema Orion
+> (vedi `DATABASE_SCHEMA.md`). Il formato "un documento piatto per dataset" non è
+> supportato dal codice attuale.
 
 ### 6.2 Verifica Connessioni
 
@@ -234,7 +254,7 @@ curl http://localhost:11434/api/embed \
 
 # Chat
 curl http://localhost:11434/api/chat \
-  -d '{"model": "enggpt-2-16b-a3b", "messages": [{"role": "user", "content": "test"}]}'
+  -d '{"model": "mixtral", "messages": [{"role": "user", "content": "test"}]}'
 ```
 
 ---
@@ -248,7 +268,7 @@ curl http://localhost:11434/api/chat \
 docker logs -f idra_ai_chatbot
 
 # MongoDB logs
-docker logs -f rag_mongodb
+docker logs -f orion_mongo
 
 # ChromaDB logs
 docker logs -f rag_chroma
@@ -269,7 +289,7 @@ docker logs -f rag_chroma
 
 ```bash
 # MongoDB dump
-docker exec rag_mongodb mongodump --db rag_platform --out /backup
+docker exec orion_mongo mongodump --db orion --out /backup
 
 # ChromaDB persiste su volume `chromadb_data`
 docker run --rm -v chromadb_data:/chroma/chroma -v $(pwd):/backup alpine tar czf /backup/chromadb_backup.tar.gz /chroma/chroma
@@ -348,13 +368,13 @@ docker exec -it idra_ai_chatbot bash
 | Variabile | Descrizione | Default |
 |-----------|-----------|---------|
 | PORT | Porta FastAPI | 3000 |
-| MONGODB_URI | Connessione MongoDB | mongodb://localhost:27017/rag_platform |
+| MONGODB_URI | Connessione MongoDB | mongodb://localhost:27017/orion |
 | CHROMA_HOST | Host ChromaDB | localhost |
 | CHROMA_PORT | Porta ChromaDB | 8000 |
 | OLLAMA_HOST | Host Ollama | localhost |
 | OLLAMA_PORT | Porta Ollama | 11434 |
 | OLLAMA_EMBEDDING_MODEL | Modello embedding | mxbai-embed-large |
-| OLLAMA_LLM_MODEL | Modello LLM | enggpt-2-16b-a3b |
+| OLLAMA_LLM_MODEL | Modello LLM | mixtral |
 | JWT_SECRET | Chiave JWT | - |
 | JWT_EXPIRES_IN | Scadenza JWT | 1h |
 | ADMIN_TOKEN | Token (plain) per endpoint /admin/* | - |

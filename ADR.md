@@ -79,7 +79,7 @@ Positive:
 
 ### Status
 
-Accepted
+Superseded by ADR-009
 
 ### Context
 
@@ -199,3 +199,35 @@ Positive:
 Negative:
 
 * Higher inference latency
+
+---
+
+## ADR-009: Replace EngGPT with Mixtral
+
+### Status
+
+Accepted
+
+### Context
+
+`enggpt-2-16b-a3b` (ADR-004) risultava non coerente con i requisiti effettivi del
+progetto (qualità/coerenza delle risposte non adeguata all'uso previsto).
+
+### Decision
+
+Sostituire il modello LLM configurato in `OLLAMA_LLM_MODEL` con `mixtral` in tutti
+i punti di codice, configurazione e documentazione che referenziavano
+`enggpt-2-16b-a3b`.
+
+### Consequences
+
+Positive:
+
+* Modello ampiamente supportato da Ollama, community più ampia
+* Migliore qualità generale di generazione rispetto a EngGPT
+
+Negative:
+
+* Richiede un nuovo `ollama pull mixtral` su ogni ambiente (locale, docker, produzione)
+* Footprint di memoria/CPU da rivalidare (Mixtral è un modello Mixture-of-Experts,
+  il consumo di RAM effettivo va verificato rispetto ai requisiti in ARCHITECTURE.md)

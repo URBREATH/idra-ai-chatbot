@@ -35,7 +35,7 @@ Write-Host "Pull modelli Ollama..."
 docker exec idra_ollama_local ollama pull mxbai-embed-large
 $llmModel = (Get-Content $EnvFile | Where-Object { $_ -match '^OLLAMA_LLM_MODEL=' } | ForEach-Object { $_.Split('=')[1] })
 if ([string]::IsNullOrWhiteSpace($llmModel)) {
-  $llmModel = "enggpt-2-16b-a3b"
+  $llmModel = "mixtral"
 }
 docker exec idra_ollama_local ollama pull $llmModel
 
