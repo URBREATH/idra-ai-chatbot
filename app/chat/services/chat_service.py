@@ -2,7 +2,7 @@ import uuid
 import logging
 from fastapi import HTTPException
 
-from app.chat.dto.models import ChatResponse, SourceReference
+from app.chat.dto.models import ChatResponse
 from app.retrieval.embeddings.query_embedder import embed_query
 from app.retrieval.vector_search.searcher import vector_search
 from app.retrieval.reranker.reranker import rerank

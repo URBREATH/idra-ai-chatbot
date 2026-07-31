@@ -6,7 +6,7 @@ from app.ollama import client as ollama_client
 from app.chat.dto.models import ChatRequest, ChatResponse, ConversationHistory
 from app.chat.services.chat_service import generate_answer
 from app.common.guards.tenant_guard import resolve_tenant
-from app.auth import extract_user_id_from_keycloak_token
+from app.auth import extract_user_id_from_keycloak_token, require_admin_authorization
 from app.conversation import services as conversation_services
 
 router = APIRouter()
@@ -28,7 +28,7 @@ async def chat_endpoint(
     - Returns answer + sources + conversation ID
     """
     tenant_id = resolve_tenant(x_tenant_id)
-    user_id = extract_user_id_from_keycloak_token(authorization)
+    user_id = require_admin_authorization(authorization)
     
     # Use provided conversation ID or create new one
     conversation_id = request.conversationId or str(uuid.uuid4())
@@ -79,7 +79,7 @@ async def get_conversation_history(
     Only the conversation owner can retrieve it (via userId from JWT).
     """
     tenant_id = resolve_tenant(x_tenant_id)
-    user_id = extract_user_id_from_keycloak_token(authorization)
+    user_id = require_admin_authorization(authorization)
     
     # Get conversation from MongoDB
     conversation = await conversation_services.get_conversation(
