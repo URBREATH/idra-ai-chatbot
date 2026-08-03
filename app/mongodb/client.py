@@ -4,8 +4,9 @@ from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 
 load_dotenv()
+MONGODB_DB=os.getenv("MONGODB_DB", "rag_platform")
 
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://mongo:27017/orion")
+MONGODB_URI = os.getenv(f"MONGODB_URI/{MONGODB_DB}", f"mongodb://mongo:27017/{MONGODB_DB}")
 
 client = AsyncIOMotorClient(MONGODB_URI)
 

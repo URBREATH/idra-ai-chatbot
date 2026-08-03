@@ -1,8 +1,11 @@
+import os
 from typing import Any
-
+from dotenv import load_dotenv
 from app.chroma import client as chroma_client
 
-DEFAULT_N_RESULTS = 10
+load_dotenv()
+
+DEFAULT_N_RESULTS = int(os.getenv("DEFAULT_N_RESULTS", 10))
 
 
 def vector_search(

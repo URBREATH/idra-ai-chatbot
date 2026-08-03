@@ -1,12 +1,17 @@
+import asyncio
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request, Response, status
 from pydantic_settings import BaseSettings
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from datetime import datetime
 import logging
 import structlog
+
+import httpx
+from pymongo import MongoClient
+from pymongo.errors import PyMongoError
 
 
 load_dotenv()
@@ -70,13 +75,53 @@ _metrics: dict[str, int] = {
 }
 
 
-@app.get("/health")
+"""@app.get("/health")
 async def health():
     return {
         "status": "UP",
         "mongo": "UNKNOWN",
         "chroma": "UNKNOWN",
         "ollama": "UNKNOWN",
+    }"""
+
+@app.get("/health")
+async def health(response: Response):
+    chroma_url = f"http://{settings.chroma_host}:{settings.chroma_port}/api/v2/heartbeat"
+    ollama_url = f"http://{settings.ollama_host}:{settings.ollama_port}/api/tags"
+
+    def _ping_mongo():
+        client = None
+        try:
+            client = MongoClient(settings.mongo_uri, serverSelectionTimeoutMS=2000)
+            client.admin.command("ping")   # no-op: verifica che il server risponda
+            return "UP"
+        except PyMongoError:
+            return "DOWN"
+        finally:
+            if client is not None:
+                client.close()
+
+    async def _check(url):
+        try:
+            async with httpx.AsyncClient(timeout=2.0) as http:
+                r = await http.get(url)
+            return "UP" if r.status_code == 200 else "DOWN"
+        except httpx.HTTPError:
+            return "DOWN"
+
+    mongo  = await asyncio.to_thread(_ping_mongo)
+    chroma = await _check(chroma_url)
+    ollama = await _check(ollama_url)
+
+    everything_up = all(s == "UP" for s in (mongo, chroma, ollama))
+    if not everything_up:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+    return {
+        "status": "UP" if everything_up else "UNREACHABLE",
+        "mongo": mongo,
+        "chroma": chroma,
+        "ollama": ollama,
     }
 
 class IngestionRunRequest(BaseModel):

@@ -1,13 +1,18 @@
+import os
+
+from dotenv import load_dotenv
+
 from app.mongodb.client import get_database
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 from bson import ObjectId
 import logging
 
+load_dotenv()
 logger = logging.getLogger(__name__)
 
 CONVERSATION_COLLECTION = "conversations"
-MESSAGE_TTL_DAYS = 7  # GDPR: auto-delete after 7 days
+MESSAGE_TTL_DAYS = int(os.getenv("MESSAGE_TTL_DAYS", 7))  # GDPR: auto-delete after 7 days
 
 
 async def initialize_conversation_indexes():

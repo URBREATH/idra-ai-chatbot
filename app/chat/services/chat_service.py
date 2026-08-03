@@ -1,5 +1,8 @@
+import os
 import uuid
 import logging
+
+from dotenv import load_dotenv
 from fastapi import HTTPException
 
 from app.chat.dto.models import ChatResponse
@@ -12,7 +15,9 @@ from app.conversation import services as conversation_services
 
 logger = logging.getLogger(__name__)
 
-TOP_K = 5
+load_dotenv()
+
+TOP_K = os.getenv("TOP_K", 5)
 NO_RESULT_ANSWER = "No relevant datasets were found for your query."
 
 _SYSTEM_INSTRUCTIONS = (

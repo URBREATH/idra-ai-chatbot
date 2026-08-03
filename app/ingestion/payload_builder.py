@@ -1,9 +1,15 @@
+import os
 from typing import Dict, Any
+
+from dotenv import load_dotenv
+
 from .semantic_enricher import enrich
 from .technical_crawler import crawl
 
-MAX_TOKENS = 400
-CHARS_PER_TOKEN = 3
+load_dotenv()
+
+MAX_TOKENS = int(os.getenv("MAX_TOKENS_PAYLOAD_BUILDER", 400))
+CHARS_PER_TOKEN = int(os.getenv("CHARS_PER_TOKEN_PAYLOAD_BUILDER", 3))
 MAX_CHARS = MAX_TOKENS * CHARS_PER_TOKEN
 
 SEP = "[SEP]"
@@ -23,7 +29,7 @@ FIELD_LABELS = {
 JUNK = {"", '\\"\\"', '""', "N/A"}
 
 # se True, arricchisce il blocco semantico con l'LLM (lento in ingestione)
-ENABLE_ENRICHMENT = True
+ENABLE_ENRICHMENT = os.getenv("ENABLE_ENRICHMENT", True)
 
 
 def _truncate(text: str, max_chars: int) -> str:

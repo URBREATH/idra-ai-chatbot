@@ -1,5 +1,8 @@
 import os
 import httpx
+from dotenv import load_dotenv
+
+load_dotenv()
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "localhost")
 OLLAMA_PORT = int(os.getenv("OLLAMA_PORT", "11434"))

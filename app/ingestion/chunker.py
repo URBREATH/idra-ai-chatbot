@@ -1,8 +1,13 @@
+import os
 import re
 from typing import List, Dict, Any
 
-MAX_TOKENS = 300
-CHARS_PER_TOKEN = 2
+from dotenv import load_dotenv
+
+load_dotenv()
+
+MAX_TOKENS = int(os.getenv("MAX_TOKENS_CHUNKER", 300))
+CHARS_PER_TOKEN = int(os.getenv("CHARS_PER_TOKEN_CHUNKER", 2))
 MAX_CHARS = MAX_TOKENS * CHARS_PER_TOKEN
 
 SEP = "[SEP]"

@@ -2,11 +2,14 @@ import json
 import os
 from typing import List
 
+from dotenv import load_dotenv
+
 from ..ollama.client import generate_completion
+load_dotenv()
 
 MODEL = os.getenv("OLLAMA_LLM_MODEL", "qwen2.5:7b")
-TEMPERATURE = 0.1
-MAX_TERMS = 20
+TEMPERATURE = float(os.getenv("TEMPERATURE", 0.1))
+MAX_TERMS = int(os.getenv("MAX_TERMS", 20))
 
 
 def _build_prompt(text: str) -> str:
