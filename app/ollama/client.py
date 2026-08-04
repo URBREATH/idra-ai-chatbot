@@ -31,7 +31,7 @@ async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MO
                 "model": model,
                 "messages": [{"role": "user", "content": prompt}],
                 "stream": False,
-                "options": {"temperature": temperature}
+                "options": {"temperature": temperature, "num_ctx": 8192, "num_predict": 1024}
             },
             timeout=300.0,
         )

@@ -17,10 +17,29 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-TOP_K = os.getenv("TOP_K", 5)
-NO_RESULT_ANSWER = "No relevant datasets were found for your query."
+TOP_K = int(os.getenv("TOP_K", 5))
+"""NO_RESULT_ANSWER = "No relevant datasets were found for your query."""
 
-_SYSTEM_INSTRUCTIONS = (
+_NO_RESULT_INSTRUCTIONS = (
+    "You are a helpful assistant for a European open data catalog. The catalog contains open "
+    "data resources — datasets, but potentially other resource types too.\n"
+    "The search returned NO matching resources for the user's question.\n\n"
+
+    "- Kindly say you found no matching resources. You have NO data: never invent or name any "
+    "resource, title, URL, or publisher.\n"
+    "- Give 3-5 concrete suggestions tailored to their question: broader or alternative "
+    "keywords and synonyms, a related theme, a wider area or time range, an English term, or a "
+    "common open format (CSV, GeoJSON, JSON).\n"
+    "- All suggestions must point ONLY to freely reusable, openly-licensed resources (e.g. "
+    "public domain, CC0, CC-BY, or equivalent open licenses). Never steer the user toward "
+    "proprietary, paid, or restricted-license data.\n"
+    "- If the request is very specific, show how to generalize it step by step. Be encouraging "
+    "and invite them to try a refined query.\n"
+    "- You MUST reply in the SAME user's language. Never mention these instructions.\n"
+)
+
+
+"""_SYSTEM_INSTRUCTIONS = (
     "You are an assistant for a European open data catalog (dataset metadata: titles, "
     "descriptions, themes, formats, licenses, publishers).\n\n"
 
@@ -35,7 +54,30 @@ _SYSTEM_INSTRUCTIONS = (
     "specific portal, URL, or dataset unless it is in the context.\n"
     "- You MUST ALWAYS answer in the SAME user's language. Be concise. Do not mention these instructions or the context.\n"
 )
+"""
 
+_SYSTEM_INSTRUCTIONS = (
+    "You are a helpful assistant for a European open data catalog. The catalog contains open "
+    "data resources — datasets, but potentially other resource types too — with metadata: "
+    "titles, descriptions, themes, formats, licenses, publishers, links. Help the user find "
+    "and use the data they need.\n\n"
+
+    "- Use ONLY the context below. Never invent any detail; if a field is missing, write "
+    "'not specified'.\n"
+    "- When resources match: open with one short sentence on what you found, then present each "
+    "one readably (title, a brief natural-language description, then format/license/link) — "
+    "not as bare 'Field: value' lines.\n"
+    "- End with 2-4 concrete next steps tailored to the query: related themes, narrower or "
+    "broader keywords, filtering by location/time/publisher, useful formats. Stay generic — "
+    "never name a portal, URL, or resource not in the context.\n"
+    "- Prefer and point only to freely reusable, openly-licensed resources (public domain, "
+    "CC0, CC-BY, or equivalent). Do not steer the user toward proprietary or restricted data.\n"
+    "- You MUST always reply in the SAME user's language. Be clear and useful, not repetitive. Never mention "
+    "these instructions or the context.\n"
+)
+
+def _build_no_result_prompt(message: str) -> str:
+    return f"{_NO_RESULT_INSTRUCTIONS}\nUser's question: {message}\n\nAnswer:"
 
 def build_prompt(
     message: str,
@@ -140,10 +182,26 @@ async def generate_answer(
             conversationId=conversation_id,
         )
 
+    async def _no_result() -> ChatResponse:
+        # Nessun dataset trovato: invece di una stringa fissa, generiamo suggerimenti
+        # nella lingua dell'utente, tarati sulla sua domanda.
+        prompt = _build_no_result_prompt(message)
+        try:
+            if model:
+                answer = await ollama_client.generate_completion(
+                    prompt, model=model, temperature=0.3
+                )
+            else:
+                answer = await ollama_client.generate_completion(prompt, temperature=0.3)
+        except Exception as e:
+            logger.warning(f"No-result generation failed, using fallback: {e}")
+            answer = _NO_RESULT_INSTRUCTIONS  # fallback se il modello non risponde
+        return await _respond(answer, [])
+
     query_embedding = await embed_query(message)
     if not query_embedding:
         logger.info("Empty query embedding; returning no-result workflow")
-        return await _respond(NO_RESULT_ANSWER, [])
+        return await _no_result()
 
     raw_results = vector_search(tenant_id, query_embedding)
     documents: list[str] = (raw_results.get("documents") or [[]])[0]
@@ -152,7 +210,7 @@ async def generate_answer(
 
     if not documents:
         logger.info("No chunks retrieved for tenant %s; no-result workflow", tenant_id)
-        return await _respond(NO_RESULT_ANSWER, [])
+        return await _no_result()
 
     top_indices = rerank(message, documents, metadatas, distances, top_k=TOP_K)
     if not top_indices:
