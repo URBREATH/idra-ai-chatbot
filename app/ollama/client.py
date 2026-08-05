@@ -23,7 +23,7 @@ async def generate_embedding(text: str, model: str = os.getenv("OLLAMA_EMBEDDING
         data = resp.json()
         return data.get("embedding", [])
 
-async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MODEL", "mixtral"), temperature: float = 0.0) -> str:
+async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MODEL", "mistral-nemo"), temperature: float = 0.0) -> str:
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             f"{BASE_URL}/api/chat",
@@ -33,7 +33,7 @@ async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MO
                 "stream": False,
                 "options": {"temperature": temperature, "num_ctx": 8192, "num_predict": 1024}
             },
-            timeout=300.0,
+            timeout=httpx.Timeout(connect=10.0, read=1200.0, write=30.0, pool=30.0),
         )
         resp.raise_for_status()
         data = resp.json()

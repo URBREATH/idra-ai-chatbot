@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 TOP_K = int(os.getenv("TOP_K", 5))
+DISTANCE_THRESHOLD = float(os.getenv("DISTANCE_THRESHOLD", "0.55"))
 """NO_RESULT_ANSWER = "No relevant datasets were found for your query."""
 
 _NO_RESULT_INSTRUCTIONS = (
@@ -76,8 +77,19 @@ _SYSTEM_INSTRUCTIONS = (
     "these instructions or the context.\n"
 )
 
-def _build_no_result_prompt(message: str) -> str:
-    return f"{_NO_RESULT_INSTRUCTIONS}\nUser's question: {message}\n\nAnswer:"
+def _build_no_result_prompt(message: str, conversation_context: str = "") -> str:
+    parts = [_NO_RESULT_INSTRUCTIONS]
+    if conversation_context:
+        parts.append("\nPrevious conversation:")
+        parts.append(conversation_context)
+    parts.append(f"\nUser's question: {message}")
+    parts.append(
+        "\nIMPORTANT: If the user's question refers to items already listed in the previous "
+        "conversation (words like 'these', 'those', 'the second one'), answer using that "
+        "conversation, not a new search. Reply in the user's language."
+    )
+    parts.append("\nAnswer:")
+    return "\n".join(parts)
 
 def build_prompt(
     message: str,
@@ -183,19 +195,15 @@ async def generate_answer(
         )
 
     async def _no_result() -> ChatResponse:
-        # Nessun dataset trovato: invece di una stringa fissa, generiamo suggerimenti
-        # nella lingua dell'utente, tarati sulla sua domanda.
-        prompt = _build_no_result_prompt(message)
+        prompt = _build_no_result_prompt(message, conversation_context)   # <-- passa lo storico
         try:
             if model:
-                answer = await ollama_client.generate_completion(
-                    prompt, model=model, temperature=0.0
-                )
+                answer = await ollama_client.generate_completion(prompt, model=model, temperature=0.0)
             else:
                 answer = await ollama_client.generate_completion(prompt, temperature=0.0)
         except Exception as e:
             logger.warning(f"No-result generation failed, using fallback: {e}")
-            answer = _NO_RESULT_INSTRUCTIONS  # fallback se il modello non risponde
+            answer = _NO_RESULT_INSTRUCTIONS
         return await _respond(answer, [])
 
     query_embedding = await embed_query(message)
@@ -207,10 +215,23 @@ async def generate_answer(
     documents: list[str] = (raw_results.get("documents") or [[]])[0]
     metadatas: list[dict] = (raw_results.get("metadatas") or [[]])[0]
     distances: list[float] = (raw_results.get("distances") or [[]])[0]
+    logger.info("distances for query %r: %s", message, distances)
 
     if not documents:
         logger.info("No chunks retrieved for tenant %s; no-result workflow", tenant_id)
         return await _no_result()
+
+    kept = [i for i, d in enumerate(distances) if d <= DISTANCE_THRESHOLD]
+    if not kept:
+        logger.info(
+            "All %d chunks above distance threshold %.3f; no-result workflow",
+            len(distances), DISTANCE_THRESHOLD,
+        )
+        return await _no_result()
+
+    documents = [documents[i] for i in kept]
+    metadatas = [metadatas[i] for i in kept]
+    distances = [distances[i] for i in kept]
 
     top_indices = rerank(message, documents, metadatas, distances, top_k=TOP_K)
     if not top_indices:

@@ -136,7 +136,7 @@ hardware acceleration, but CPU-only inference works too.
 The steps below get the stack running. For the full, verification-driven walkthrough (data import,
 standalone Ollama, connectivity checks, troubleshooting) see the **Installation Guide**.
 
-**1. Clone and configure.** Create a `.env.test` file next to `docker-compose.yml` — it must exist,
+**1. Clone and configure.** Create a `.env.test` file next to `docker-compose-example.yml` — it must exist,
 since Compose parses it even when starting a single service. The Installation Guide lists the
 required settings and sensible values.
 
@@ -177,7 +177,7 @@ curl -s -w '\nHTTP %{http_code}\n' -X POST http://localhost:3000/chat \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H 'X-Tenant-Id: default-tenant' \
-  -d '{"message":"have you got some datasets related to Cluj-Napoca?"}'
+  -d '{"message":"have you got some datasets related to <select city>?", "conversationId":"memory_test001"}'
 ```
 
 Copying data into MongoDB does **not** make it searchable on its own — you must run ingestion so the
