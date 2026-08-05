@@ -6,3 +6,5 @@ __pycache__/
 app/__pycache__/main.cpython-311.pyc
 .idea
 .agent
+.env
+.env.test

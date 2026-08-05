@@ -189,10 +189,10 @@ async def generate_answer(
         try:
             if model:
                 answer = await ollama_client.generate_completion(
-                    prompt, model=model, temperature=0.3
+                    prompt, model=model, temperature=0.0
                 )
             else:
-                answer = await ollama_client.generate_completion(prompt, temperature=0.3)
+                answer = await ollama_client.generate_completion(prompt, temperature=0.0)
         except Exception as e:
             logger.warning(f"No-result generation failed, using fallback: {e}")
             answer = _NO_RESULT_INSTRUCTIONS  # fallback se il modello non risponde
