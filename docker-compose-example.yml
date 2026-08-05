@@ -1,0 +1,60 @@
+
+services:
+  app:
+    build: .
+    container_name: idra_ai_chatbot
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.test
+    depends_on:
+      - mongo
+      - chromadb
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    container_name: orion_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_MAX_LOADED_MODELS=2    # embedder piccolo + un LLM, senza ricaricamenti
+      - OLLAMA_NUM_PARALLEL=1         # una richiesta alla volta
+      - OLLAMA_CONTEXT_LENGTH=8192    # contesto contenuto = cache K/V piu' piccola
+      - OLLAMA_KEEP_ALIVE=30s         # libera la RAM quando inattivo
+      - OLLAMA_MAX_QUEUE=64           # non accumulare troppe richieste in coda
+      - OLLAMA_FLASH_ATTENTION=1      # utile soprattutto su GPU
+      - OLLAMA_KV_CACHE_TYPE=q8_0     # dimezza la cache K/V (solo con flash attention)
+    mem_limit: 12g                    # tetto rigido: il container non supera 12 GB
+    cpus: 4
+    restart: unless-stopped
+
+  chromadb:
+    image: chromadb/chroma:1.5.3
+    container_name: rag_chroma
+    ports:
+      - "8000:8000"
+    volumes:
+      - chromadb_data:/data
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+  chromadb_data:
+  ollama_data:
+    # external: true -> Da mettere se voglio utilizzare i modelli che già si trovano all'interno di un volume di Ollama già esistente
+
+networks:
+  default:
+    name: rag_network
