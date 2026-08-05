@@ -1,162 +1,217 @@
-# Local Multi-Tenant RAG Platform for European Metadata
+# Idra AI Chatbot
+
+A conversational assistant for a **European open data catalog**, built on a Retrieval-Augmented
+Generation (RAG) pipeline. Instead of relying only on what a language model learned during
+training, the chatbot first retrieves the relevant resources from its own knowledge base (the
+catalog's datasets and entities) and then feeds them to a locally-run model, which answers while
+staying grounded in that data. This keeps answers factual and traceable, with links back to the
+source resources.
+
+---
 
 ## Overview
 
-This project implements a fully on-premise Retrieval Augmented Generation (RAG) platform for querying and exploring European metadata repositories based on:
+The system takes a user question, turns it into a vector, searches a vector store for the most
+similar catalog resources, assembles them into context, and asks a local language model to produce
+a grounded answer together with its sources. When nothing matches, it does not stay silent: it
+explains that no resources were found and suggests concrete ways to refine the search, always
+pointing only to openly-licensed data. Conversations are remembered for a short, privacy-bounded
+window so that follow-up questions keep their context.
 
-* NGSI-LD
-* DCAT-AP
-* SDMX
-* ISTAT datasets
-
-The system operates entirely on local infrastructure and is designed to comply with GDPR requirements.
-
-Key characteristics:
-
-* CPU-only deployment
-* Multi-tenant architecture
-* Local embedding generation
-* Local LLM inference
-* Zero-hallucination response policy
-* Incremental ingestion pipeline
-* ChromaDB vector search
+All models run locally through [Ollama](https://ollama.com), so no data leaves the deployment for
+inference.
 
 ---
 
-## Goals
+## Architecture
 
-### Functional Goals
+The application is a FastAPI service that orchestrates three supporting services, all running as
+Docker containers on the same Compose network. A fourth service (Keycloak) is optional and only
+needed where verified identity is required.
 
-* Explore datasets using natural language.
-* Search across metadata repositories.
-* Support conversational interaction.
-* Return only information contained in indexed datasets.
+| Service        | Role                                                      | Internal port |
+|----------------|-----------------------------------------------------------|:-------------:|
+| **app**        | FastAPI application: chat API and RAG orchestration       | 3000          |
+| **mongo**      | Conversational memory + source entities/datasets          | 27017         |
+| **chromadb**   | Vector store (embeddings), API v2                         | 8000          |
+| **ollama**     | Local models: embeddings + answer generation              | 11434         |
+| keycloak *(opt.)* | JWT issuer for authenticated, multi-tenant access      | 8080          |
 
-### Non-Functional Goals
-
-* Full GDPR compliance.
-* On-premise execution.
-* No external AI services.
-* Tenant isolation.
-* High retrieval precision.
-
----
-
-## Technology Stack
-
-| Layer            | Technology             |
-| ---------------- | ---------------------- |
-| Backend          | FastAPI + LangChain    |
-| Source Database  | MongoDB                |
-| Vector Database  | ChromaDB               |
-| Inference Engine | Ollama                 |
-| Embeddings       | mxbai-embed-large      |
-| LLM              | mixtral                |
-| Scheduler        | cron                  |
-| Evaluation       | RAGAS                  |
+Within the Docker network, containers reach each other **by service name and internal port** (for
+example `mongo:27017`, `chromadb:8000`, `ollama:11434`) — not by any port published to the host.
 
 ---
 
-## High-Level Architecture
+## How it works (RAG pipeline)
 
-MongoDB → Ingestion Pipeline → Embeddings → ChromaDB → Retrieval → Reranker → EngGPT → User
+A single request flows through four steps:
+
+1. **Embed the query** — the question is turned into a 1024-dimension vector by Ollama using
+   `mxbai-embed-large`. The embedding model is fixed, because the Chroma collection is indexed at
+   that dimensionality.
+2. **Vector search** — ChromaDB returns the resources most semantically similar to the query.
+3. **Assemble context** — the retrieved resources are formatted, optionally prepended with recent
+   conversation history.
+4. **Generate** — Ollama produces the final answer from the assembled prompt, grounded in the
+   context, with a selectable generation model.
 
 ---
 
-## Repository Structure
+## Conversational memory
+
+Memory is entirely a prompt-side mechanism: the model itself holds no state between requests. Every
+message — both the user's and the assistant's — is stored as a document in MongoDB's
+`conversations` collection, grouped by `conversationId`. On each new turn the most recent messages
+of that conversation are re-injected into the prompt, giving the model the illusion of remembering.
+
+Three conditions must all hold for memory to work: a valid JWT is present (its `sub` claim provides
+the `userId` under which messages are saved), the `conversationId` stays the same across turns, and
+the app reads and writes the same MongoDB instance being inspected. Without a token the chat still
+answers, but nothing is persisted.
+
+Memory is not permanent. Each message is created with a seven-day `expiresAt`, and a MongoDB TTL
+index removes it automatically after that — a deliberate choice aligned with the GDPR right to
+erasure (Art. 17). Note that the TTL background task runs roughly every 60 seconds, so deletion is
+eventual rather than instantaneous.
+
+---
+
+## Tech stack
+
+Python · FastAPI · MongoDB · ChromaDB (vector store) · Ollama (local LLMs) · Docker & Docker
+Compose · JWT authentication.
+
+---
+
+## Recommended Project Structure
+
+The application code is organized by responsibility, with one package per concern (ingestion,
+retrieval, storage clients, and chat orchestration):
 
 ```text
-/app
-  main.py                  # FastAPI application with endpoints
-  ingestion/               # Ingestion pipeline
-    service.py             # Ingestion orchestration
-    payload_builder.py     # Builds payloads from datasets
-    semantic_enricher.py   # LLM-based semantic enrichment
-    technical_crawler.py   # Extracts SDMX technical terms
-    chunker.py             # Splits payloads into chunks
-  chroma/                  # ChromaDB integration
-    client.py              # Collection management
-  ollama/                  # Ollama API client
-    client.py              # Embedding and chat endpoints
-  mongodb/                 # MongoDB integration
-    client.py              # Database connection
-    repositories.py        # Dataset queries
-  retrieval/               # Retrieval pipeline (TODO)
-  chat/                    # Chat functionality (TODO)
-  monitoring/              # Metrics and logging (TODO)
-/docs
-  README.md
-  ARCHITECTURE.md
-  ADR.md
-  IMPLEMENTATION_PLAN.md
+app/
+├── chat/
+    └── controllers
+    └── dto
+    └── services
+│   └── __init__.py
+├── chroma/
+│   ├── client.py
+│   └── __init__.py
+├── common/
+│   ├── guards/
+│   └── utils
+├── conversation/
+│   └── __init__.py
+├── ingestion/
+│   └── service.py
+├── mongodb/
+│   ├── client.py
+│   └── repositories.py
+├── retrieval/
+│   └── __init__.py
+├── ollama/
+│   └── client.py
+├── __init__.py
+├── main.py
+├── auth.py
+├── tests/
+│   ├── data/
+│   └── repositories.py
 ```
 
 ---
 
-## Core Principles
+## Prerequisites
 
-1. Retrieval before generation.
-2. No external knowledge.
-3. Tenant isolation by collection.
-4. Deterministic responses.
-5. Explainable architecture.
-
----
-
-## Deployment Requirements
-
-* Linux Server
-* ≥150 GB RAM
-* AVX2 support
-* Ollama
-* ChromaDB
-* MongoDB
-
-See ARCHITECTURE.md for implementation details.
+Docker Engine with the Docker Compose plugin. Because the language models run locally, RAM is the
+main constraint: on a 16 GB machine without a dedicated GPU, a 7B-class generation model
+(e.g. `qwen2.5:7b`) is a sensible reference. A NVIDIA GPU with the NVIDIA Container Toolkit enables
+hardware acceleration, but CPU-only inference works too.
 
 ---
 
-## Local Setup with Docker
+## Quick start
 
-### Prerequisites
+The steps below get the stack running. For the full, verification-driven walkthrough (data import,
+standalone Ollama, connectivity checks, troubleshooting) see the **Installation Guide**.
 
-* Docker Desktop (Compose v2 enabled)
-* At least 16 GB RAM for local tests (more for larger Ollama models)
+**1. Clone and configure.** Create a `.env.test` file next to `docker-compose.yml` — it must exist,
+since Compose parses it even when starting a single service. The Installation Guide lists the
+required settings and sensible values.
 
-### 1. Create local env file
+**2. Start MongoDB and import the source data:**
 
-Copy `.env.docker.example` to `.env.docker` and adjust values if needed.
-
-### 2. Bootstrap local stack (recommended on Windows)
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\local\bootstrap.ps1
+```bash
+docker compose up -d mongo
+docker compose exec -T mongo mongoimport \
+  --db rag_platform --collection entities --jsonArray < entities.json
 ```
 
-This command will:
+**3. Pull the models into Ollama** (embedding model is required and fixed; generation model is your
+choice):
 
-* start MongoDB, ChromaDB, Ollama and API
-* create `.env.docker` if missing
-* pull Ollama embedding/LLM models configured in `.env.docker`
-
-### 3. Manual startup (alternative)
-
-```powershell
-copy .env.docker.example .env.docker
-docker compose -f docker-compose.local.yml --env-file .env.docker up -d --build
-docker exec idra_ollama_local ollama pull mxbai-embed-large
-docker exec idra_ollama_local ollama pull mixtral
+```bash
+docker compose exec ollama ollama pull mxbai-embed-large
+docker compose exec ollama ollama pull qwen2.5:7b
 ```
 
-### 4. Verify services
+**4. Start the whole stack:**
 
-* API health: `http://localhost:3000/health`
-* Metrics: `http://localhost:3000/metrics`
-* Chroma service: `http://localhost:8000`
-* Ollama tags: `http://localhost:11434/api/tags`
-
-### 5. Stop stack
-
-```powershell
-docker compose -f docker-compose.local.yml --env-file .env.docker down
+```bash
+docker compose up -d --build
+curl -s http://localhost:3000/health
 ```
+
+**5. Populate the vector store (ingestion)** and then ask a question:
+
+```bash
+export ADMIN_TOKEN="<value from .env.test>"
+
+curl -s -X POST http://localhost:3000/admin/ingestion/run \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"fullReindex": true}'
+
+curl -s -w '\nHTTP %{http_code}\n' -X POST http://localhost:3000/chat \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H 'X-Tenant-Id: default-tenant' \
+  -d '{"message":"have you got some datasets related to Cluj-Napoca?"}'
+```
+
+Copying data into MongoDB does **not** make it searchable on its own — you must run ingestion so the
+resources are embedded into ChromaDB before the chat can retrieve anything.
+
+---
+
+## API
+
+| Method & path                 | Description                                                   |
+|-------------------------------|---------------------------------------------------------------|
+| `POST /chat`                  | Ask a question; returns `answer`, `sources`, `conversationId` |
+| `GET  /chat/{conversationId}` | Retrieve a conversation (ownership-checked, `403` otherwise)   |
+| `GET  /models`                | List generation models available in Ollama                    |
+| `POST /admin/ingestion/run`   | Run ingestion (requires `ADMIN_TOKEN`)                         |
+| `GET  /health`                | Reports the status of `mongo`, `chroma`, and `ollama`          |
+
+FastAPI serves interactive API documentation automatically at `/docs` (Swagger UI) and `/redoc`,
+with the raw schema at `/openapi.json` — the authoritative place to confirm exact request and
+response fields.
+
+The chat request body accepts `message`, and optionally `conversationId` (required for memory) and
+`model`. Passing a valid user JWT via `Authorization: Bearer <token>` enables conversational memory;
+`ADMIN_TOKEN` authorizes the admin routes only, not `/chat`.
+
+---
+
+## Health check
+
+`GET /health` actively probes each dependency rather than returning a fixed value: it pings MongoDB,
+hits ChromaDB's `/api/v2/heartbeat`, and queries Ollama's `/api/tags`. If every dependency responds
+it returns `status: "UP"` with HTTP `200`; if any is unreachable it returns `status: "DEGRADED"`
+with HTTP `503`, so monitors and orchestrators can react to the status code.
+
+## License
+
+*(Add the project's license here — e.g. Apache-2.0 or EUPL, per the URBREATH project's conventions.)*
