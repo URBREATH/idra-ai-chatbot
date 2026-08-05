@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 TOP_K = int(os.getenv("TOP_K", 5))
+DISTANCE_THRESHOLD = float(os.getenv("DISTANCE_THRESHOLD", "0.40"))
 """NO_RESULT_ANSWER = "No relevant datasets were found for your query."""
 
 _NO_RESULT_INSTRUCTIONS = (
@@ -211,6 +212,18 @@ async def generate_answer(
     if not documents:
         logger.info("No chunks retrieved for tenant %s; no-result workflow", tenant_id)
         return await _no_result()
+
+    kept = [i for i, d in enumerate(distances) if d <= DISTANCE_THRESHOLD]
+    if not kept:
+        logger.info(
+            "All %d chunks above distance threshold %.3f; no-result workflow",
+            len(distances), DISTANCE_THRESHOLD,
+        )
+        return await _no_result()
+
+    documents = [documents[i] for i in kept]
+    metadatas = [metadatas[i] for i in kept]
+    distances = [distances[i] for i in kept]
 
     top_indices = rerank(message, documents, metadatas, distances, top_k=TOP_K)
     if not top_indices:
