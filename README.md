@@ -145,7 +145,7 @@ required settings and sensible values.
 ```bash
 docker compose up -d mongo
 docker compose exec -T mongo mongoimport \
-  --db rag_platform --collection entities --jsonArray < entities.json
+  --db rag_platform --collection <collectionName> --jsonArray < entities.json
 ```
 
 **3. Pull the models into Ollama** (embedding model is required and fixed; generation model is your
@@ -153,7 +153,7 @@ choice):
 
 ```bash
 docker compose exec ollama ollama pull mxbai-embed-large
-docker compose exec ollama ollama pull qwen2.5:7b
+docker compose exec ollama ollama pull mistral-nemo
 ```
 
 **4. Start the whole stack:**
