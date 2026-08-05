@@ -50,7 +50,7 @@ class TestSemanticEnricher:
         with patch("app.ingestion.semantic_enricher.generate_completion", new=capture_completion):
             await enrich("test query")
 
-        assert captured["model"] == "enggpt-2-16b-a3b"
+        assert captured["model"] == "mixtral"
         assert captured["temperature"] == 0.1
 
     @pytest.mark.asyncio
@@ -67,9 +67,9 @@ class TestSemanticEnricher:
             await enrich("occupazione giovanile in Italia")
 
         assert "occupazione giovanile in Italia" in captured_prompt["prompt"]
-        assert "concetti" in captured_prompt["prompt"].lower()
-        assert "sinonimi" in captured_prompt["prompt"].lower()
-        assert "termini correlati" in captured_prompt["prompt"].lower()
+        assert "concepts" in captured_prompt["prompt"].lower()
+        assert "synonyms" in captured_prompt["prompt"].lower()
+        assert "related terms" in captured_prompt["prompt"].lower()
 
     @pytest.mark.asyncio
     async def test_enrich_returns_unique_terms(self):

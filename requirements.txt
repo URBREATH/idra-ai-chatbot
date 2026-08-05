@@ -8,3 +8,4 @@ python-dotenv==1.0.1
 structlog==24.2.0
 motor>=3.7
 pymongo>=4.9
+PyJWT>=2.8.0,<3

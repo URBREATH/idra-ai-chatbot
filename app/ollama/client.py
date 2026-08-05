@@ -1,5 +1,8 @@
 import os
 import httpx
+from dotenv import load_dotenv
+
+load_dotenv()
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "localhost")
 OLLAMA_PORT = int(os.getenv("OLLAMA_PORT", "11434"))
@@ -20,7 +23,7 @@ async def generate_embedding(text: str, model: str = os.getenv("OLLAMA_EMBEDDING
         data = resp.json()
         return data.get("embedding", [])
 
-async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MODEL", "enggpt-2-16b-a3b"), temperature: float = 0.0) -> str:
+async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MODEL", "mixtral"), temperature: float = 0.0) -> str:
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             f"{BASE_URL}/api/chat",
@@ -28,7 +31,7 @@ async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MO
                 "model": model,
                 "messages": [{"role": "user", "content": prompt}],
                 "stream": False,
-                "options": {"temperature": temperature}
+                "options": {"temperature": temperature, "num_ctx": 8192, "num_predict": 1024}
             },
             timeout=300.0,
         )

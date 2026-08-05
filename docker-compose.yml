@@ -11,6 +11,7 @@ services:
     depends_on:
       - mongo
       - chromadb
+      - ollama
     restart: unless-stopped
 
   mongo:
@@ -31,9 +32,19 @@ services:
       - chromadb_data:/chroma/chroma
     restart: unless-stopped
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
 volumes:
   mongo_data:
   chromadb_data:
+  ollama_data:
 
 networks:
   default:

@@ -1,5 +1,9 @@
 import os
+
+from dotenv import load_dotenv
 from fastapi import Header, HTTPException
+
+load_dotenv()
 
 DEFAULT_TENANT_ID: str = os.getenv("DEFAULT_TENANT_ID", "default-tenant")
 _COLLECTION_PREFIX = "rag_tenant_"
