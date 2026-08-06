@@ -125,8 +125,8 @@ app/
 ## Prerequisites
 
 Docker Engine with the Docker Compose plugin. Because the language models run locally, RAM is the
-main constraint: on a 16 GB machine without a dedicated GPU, a 7B-class generation model
-(e.g. `qwen2.5:7b`) is a sensible reference. A NVIDIA GPU with the NVIDIA Container Toolkit enables
+main constraint: on a 16 GB machine without a dedicated GPU, a generation model
+(e.g. `mistral-nemo`) is a sensible reference. A NVIDIA GPU with the NVIDIA Container Toolkit enables
 hardware acceleration, but CPU-only inference works too.
 
 ---
