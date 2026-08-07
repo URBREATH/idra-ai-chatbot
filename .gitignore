@@ -8,3 +8,5 @@ app/__pycache__/main.cpython-311.pyc
 .agent
 .env
 .env.test
+docker-compose.yml
+docker-compose-example.yml

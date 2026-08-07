@@ -37,14 +37,14 @@ curl -fsSL https://ollama.com/install.sh | sh
 
 ### 3.1 File d'ambiente
 
-> **Attenzione (verificato nel codice)**: il `docker-compose.yml` presente nella root
+> **Attenzione (verificato nel codice)**: il `docker-compose-example.yml` presente nella root
 > del progetto carica realmente `env_file: .env.test` per il servizio `app` (non
 > `.env.production` come indicato in precedenza in questo documento). Il compose
 > avvia anche un servizio `ollama` proprio (container `ollama`, volume `ollama_data`),
 > quindi **non** è più necessario `host.docker.internal`/`extra_hosts` per Ollama.
 > Prima di andare in produzione:
 > - rinominare il file creato qui sotto in `.env.test` (per usarlo così com'è),
->   **oppure** modificare `docker-compose.yml` per puntare a `.env.production`;
+>   **oppure** modificare `docker-compose-example.yml` per puntare a `.env.production`;
 > - eseguire il pull dei modelli nel container `ollama` (vedi sezione 4).
 
 Creare il file nella root del progetto:
@@ -78,11 +78,11 @@ DEFAULT_TENANT_ID=default-tenant
 ```
 
 > Note:
-> - Ollama gira come servizio containerizzato (`ollama`) definito in `docker-compose.yml`:
+> - Ollama gira come servizio containerizzato (`ollama`) definito in `docker-compose-example.yml`:
 >   nessuna configurazione di rete aggiuntiva (`extra_hosts`/`host.docker.internal`) necessaria.
 > - Se si preferisce usare un'istanza Ollama già installata sull'host (es. per sfruttare una
 >   GPU non passata al container), impostare `OLLAMA_HOST=host.docker.internal`, rimuovere il
->   servizio `ollama` da `docker-compose.yml` e aggiungere
+>   servizio `ollama` da `docker-compose-example.yml` e aggiungere
 >   `extra_hosts: ["host.docker.internal:host-gateway"]` al servizio `app` (necessario su Linux).
 
 ---
@@ -153,12 +153,8 @@ docker exec -i orion_mongo mongoimport \
   --file /entities.json --jsonArray
 
 # Indici consigliati per le query usate in app/mongodb/repositories.py
-docker exec -i orion_mongo mongosh orion <<EOF
-db.entities.createIndex({ "_id.servicePath": 1 })
-db.entities.createIndex({ "_id.id": 1 })
-db.entities.createIndex({ "modDate": 1 })
-db.deleted_datasets.createIndex({ "servicePath": 1, "deletedAt": 1 })
-EOF
+[ 'deleted_datasets', 'conversations', 'entities' ]
+
 ```
 
 > Ogni documento deve avere `_id` come oggetto `{ id, type, servicePath }` (non un
@@ -320,10 +316,10 @@ openssl rand -hex 32
 
 ### 13.2 Network Isolation
 
-`docker-compose.yml` definisce già una rete dedicata `rag_network` (default del progetto),
+`docker-compose-example.yml` definisce già una rete dedicata `rag_network` (default del progetto),
 che isola i container (`app`, `mongodb`, `chromadb`) dal resto dell'host.
 Verificare che le porte di `mongodb` (27017) e `chromadb` (8000) non siano esposte
-pubblicamente in produzione (rimuovere o bindare a `127.0.0.1` le porte in `docker-compose.yml`).
+pubblicamente in produzione (rimuovere o bindare a `127.0.0.1` le porte in `docker-compose-example.yml`).
 
 ---
 
