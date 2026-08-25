@@ -16,7 +16,7 @@ DIMENSION_PATTERN = re.compile(r'\b([A-Z_]{2,}(?:\d+)?)\b')
 
 
 def _estimate_tokens(text: str) -> int:
-    return len(text) // 4
+    return len(text) // CHARS_PER_TOKEN
 
 def _hard_truncate(text: str) -> str:
     if len(text) <= MAX_CHARS:

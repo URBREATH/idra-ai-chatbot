@@ -10,7 +10,8 @@ load_dotenv()
 db = get_database()
 
 COLLECTION = os.getenv("COLLECTION")
-CURSOR_LENGTH = int(os.getenv("CURSOR_LENGTH", 100))
+_raw = os.getenv("CURSOR_LENGTH", "").strip()
+CURSOR_LENGTH = int(_raw) if _raw.isdigit() else None
 
 async def get_datasets(filter_query: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     collection = db[COLLECTION]
