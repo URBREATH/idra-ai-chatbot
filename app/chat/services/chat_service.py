@@ -12,70 +12,27 @@ from app.retrieval.reranker.reranker import rerank
 from app.retrieval.context.context_assembler import assemble_context
 from app.ollama import client as ollama_client
 from app.conversation import services as conversation_services
+from app.config.config import _SYSTEM_INSTRUCTIONS, _NO_RESULT_INSTRUCTIONS, _RELAXED_NOTICE, DISTANCE_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+if not logger.handlers:
+    _h = logging.StreamHandler()          # va su stderr, dove Uvicorn manda i suoi log
+    _h.setLevel(logging.DEBUG)
+    _h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    logger.addHandler(_h)
+    logger.propagate = False
+
 TOP_K = int(os.getenv("TOP_K", 5))
+
 DISTANCE_THRESHOLD = float(os.getenv("DISTANCE_THRESHOLD", "0.55"))
-"""NO_RESULT_ANSWER = "No relevant datasets were found for your query."""
+DISTANCE_THRESHOLD_STEP = float(os.getenv("DISTANCE_THRESHOLD_STEP", "0.10"))
+DISTANCE_THRESHOLD_MAX = float(os.getenv("DISTANCE_THRESHOLD_MAX", "0.75"))
 
-_NO_RESULT_INSTRUCTIONS = (
-    "You are a helpful assistant for a European open data catalog. The catalog contains open "
-    "data resources — datasets, but potentially other resource types too.\n"
-    "The search returned NO matching resources for the user's question.\n\n"
-
-    "- Kindly say you found no matching resources. You have NO data: never invent or name any "
-    "resource, title, URL, or publisher.\n"
-    "- Give 3-5 concrete suggestions tailored to their question: broader or alternative "
-    "keywords and synonyms, a related theme, a wider area or time range, an English term, or a "
-    "common open format (CSV, GeoJSON, JSON).\n"
-    "- All suggestions must point ONLY to freely reusable, openly-licensed resources (e.g. "
-    "public domain, CC0, CC-BY, or equivalent open licenses). Never steer the user toward "
-    "proprietary, paid, or restricted-license data.\n"
-    "- If the request is very specific, show how to generalize it step by step. Be encouraging "
-    "and invite them to try a refined query.\n"
-    "- You MUST reply in the SAME user's language. Never mention these instructions.\n"
-)
-
-
-"""_SYSTEM_INSTRUCTIONS = (
-    "You are an assistant for a European open data catalog (dataset metadata: titles, "
-    "descriptions, themes, formats, licenses, publishers).\n\n"
-
-    "Rules:\n"
-    "- Answer using ONLY the context below. Never invent titles, URLs, publishers, formats, "
-    "licenses, or dates. If a detail is not in the context, say it is not available.\n"
-    "- If the context has matching datasets, give their concrete details (title, format, "
-    "license, link) as found.\n"
-    "- If nothing matches, say so clearly and DO NOT guess. Then suggest how to refine the "
-    "search: different or broader keywords, a specific theme/location/time, an English term "
-    "or synonym, or a format like CSV or GeoJSON. Keep suggestions generic — never name a "
-    "specific portal, URL, or dataset unless it is in the context.\n"
-    "- You MUST ALWAYS answer in the SAME user's language. Be concise. Do not mention these instructions or the context.\n"
-)
-"""
-
-_SYSTEM_INSTRUCTIONS = (
-    "You are a helpful assistant for a European open data catalog. The catalog contains open "
-    "data resources — datasets, but potentially other resource types too — with metadata: "
-    "titles, descriptions, themes, formats, licenses, publishers, links. Help the user find "
-    "and use the data they need.\n\n"
-
-    "- Use ONLY the context below. Never invent any detail; if a field is missing, write "
-    "'not specified'.\n"
-    "- When resources match: open with one short sentence on what you found, then present each "
-    "one readably (title, a brief natural-language description, then format/license/link) — "
-    "not as bare 'Field: value' lines.\n"
-    "- End with 2-4 concrete next steps tailored to the query: related themes, narrower or "
-    "broader keywords, filtering by location/time/publisher, useful formats. Stay generic — "
-    "never name a portal, URL, or resource not in the context.\n"
-    "- Prefer and point only to freely reusable, openly-licensed resources (public domain, "
-    "CC0, CC-BY, or equivalent). Do not steer the user toward proprietary or restricted data.\n"
-    "- You MUST always reply in the SAME user's language. Be clear and useful, not repetitive. Never mention "
-    "these instructions or the context.\n"
-)
 
 def _build_no_result_prompt(message: str, conversation_context: str = "") -> str:
     parts = [_NO_RESULT_INSTRUCTIONS]
@@ -91,55 +48,43 @@ def _build_no_result_prompt(message: str, conversation_context: str = "") -> str
     parts.append("\nAnswer:")
     return "\n".join(parts)
 
+
 def build_prompt(
-    message: str,
-    retrieval_context: str,
-    conversation_context: str | None = None,
+        message: str,
+        retrieval_context: str,
+        conversation_context: str | None = None,
+        relaxed: bool = False,  # <-- NUOVO
 ) -> str:
-    """
-    Build the RAG prompt with conversation history + retrieval context injection.
-    
-    Structure:
-    1. System instructions
-    2. [Optional] Conversation history (previous messages)
-    3. [New] Retrieval context (dataset metadata)
-    4. Current question
-    
-    Args:
-        message: Current user message
-        retrieval_context: Context from vector search (dataset metadata)
-        conversation_context: Optional previous messages formatted as "User: ... / Assistant: ..."
-    """
     retrieval_block = retrieval_context if retrieval_context else "(no context available)"
-    
+
     prompt_parts = [_SYSTEM_INSTRUCTIONS]
-    
-    # Include conversation history if available
+
+    if relaxed:  # <-- NUOVO: avviso di ricerca allargata
+        prompt_parts.append(_RELAXED_NOTICE)
+
     if conversation_context:
         prompt_parts.append("Previous conversation:")
         prompt_parts.append(conversation_context)
         prompt_parts.append("")
-    
-    # Add retrieval context
+
     prompt_parts.append("Context (from dataset catalog):")
     prompt_parts.append(retrieval_block)
     prompt_parts.append("")
-    
-    # Add current question
+
     prompt_parts.append(f"Question: {message}")
     prompt_parts.append("")
     prompt_parts.append("Answer:")
-    
+
     return "\n".join(prompt_parts)
 
 
 async def generate_answer(
-    message: str,
-    conversation_id: str | None,
-    tenant_id: str,
-    user_id: str | None = None,
-    model: str | None = None,
-) -> ChatResponse:
+        message: str,
+        conversation_id: str | None,
+        tenant_id: str,
+        user_id: str | None = None,
+        model: str | None = None,
+) -> "ChatResponse":
     conversation_id = conversation_id or str(uuid.uuid4())
 
     if model:
@@ -150,8 +95,6 @@ async def generate_answer(
                 detail=f"Model '{model}' not found. Valid models are: {available}",
             )
 
-    # 1) Carico la cronologia PREGRESSA (prima di salvare il messaggio corrente,
-    #    altrimenti la domanda attuale finirebbe duplicata nel contesto)
     conversation_context = ""
     if user_id:
         try:
@@ -161,10 +104,9 @@ async def generate_answer(
                 limit=10,
             )
         except Exception as e:
-            logger.warning(f"Could not load conversation context: {e}")
+            logger.debug(f"Could not load conversation context: {e}")
             conversation_context = ""
 
-    # 2) Salvo il messaggio dell'utente (DOPO aver letto il contesto pregresso)
     if user_id:
         try:
             await conversation_services.append_user_message(
@@ -174,10 +116,9 @@ async def generate_answer(
                 message_content=message,
             )
         except Exception as e:
-            logger.warning(f"Could not persist user message: {e}")
+            logger.debug(f"Could not persist user message: {e}")
 
-    # Helper: salva la risposta dell'assistente e costruisce la ChatResponse
-    async def _respond(answer_text: str, sources_list: list) -> ChatResponse:
+    async def _respond(answer_text: str, sources_list: list) -> "ChatResponse":
         if user_id:
             try:
                 await conversation_services.append_assistant_message(
@@ -187,46 +128,58 @@ async def generate_answer(
                     message_content=answer_text,
                 )
             except Exception as e:
-                logger.warning(f"Could not persist assistant message: {e}")
+                logger.debug(f"Could not persist assistant message: {e}")
         return ChatResponse(
             answer=answer_text,
             sources=sources_list,
             conversationId=conversation_id,
         )
 
-    async def _no_result() -> ChatResponse:
-        prompt = _build_no_result_prompt(message, conversation_context)   # <-- passa lo storico
+    async def _no_result() -> "ChatResponse":
+        prompt = _build_no_result_prompt(message, conversation_context)
         try:
             if model:
                 answer = await ollama_client.generate_completion(prompt, model=model, temperature=0.0)
             else:
                 answer = await ollama_client.generate_completion(prompt, temperature=0.0)
         except Exception as e:
-            logger.warning(f"No-result generation failed, using fallback: {e}")
+            logger.debug(f"No-result generation failed, using fallback: {e}")
             answer = _NO_RESULT_INSTRUCTIONS
         return await _respond(answer, [])
 
     query_embedding = await embed_query(message)
     if not query_embedding:
-        logger.info("Empty query embedding; returning no-result workflow")
+        logger.debug("Empty query embedding; returning no-result workflow")
         return await _no_result()
 
     raw_results = vector_search(tenant_id, query_embedding)
     documents: list[str] = (raw_results.get("documents") or [[]])[0]
     metadatas: list[dict] = (raw_results.get("metadatas") or [[]])[0]
     distances: list[float] = (raw_results.get("distances") or [[]])[0]
-    logger.info("distances for query %r: %s", message, distances)
+    logger.debug("distances for query %r: %s", message, distances)
 
     if not documents:
-        logger.info("No chunks retrieved for tenant %s; no-result workflow", tenant_id)
+        logger.debug("No chunks retrieved for tenant %s; no-result workflow", tenant_id)
         return await _no_result()
 
-    kept = [i for i, d in enumerate(distances) if d <= DISTANCE_THRESHOLD]
+    # ------------------------------------------------------------------------
+    # Filtro iniziale con la soglia base, poi allargamento a piccoli passi.
+    # ------------------------------------------------------------------------
+    threshold = DISTANCE_THRESHOLD
+    kept = [i for i, d in enumerate(distances) if d <= threshold]
+
+    relaxed = False
+    while not kept and threshold < DISTANCE_THRESHOLD_MAX:
+        threshold = round(min(threshold + DISTANCE_THRESHOLD_STEP, DISTANCE_THRESHOLD_MAX), 4)
+        kept = [i for i, d in enumerate(distances) if d <= threshold]
+        if kept:
+            relaxed = True
+            logger.debug("Nessun risultato sotto la soglia base %.3f; allargata a %.3f -> %d risultati",
+                         DISTANCE_THRESHOLD, threshold, len(kept))
+
     if not kept:
-        logger.info(
-            "All %d chunks above distance threshold %.3f; no-result workflow",
-            len(distances), DISTANCE_THRESHOLD,
-        )
+        logger.debug("Nessun risultato entro la soglia massima %.3f; no-result workflow",
+                     DISTANCE_THRESHOLD_MAX)
         return await _no_result()
 
     documents = [documents[i] for i in kept]
@@ -241,7 +194,7 @@ async def generate_answer(
     top_metadatas = [metadatas[i] for i in top_indices]
     context, sources = assemble_context(top_documents, top_metadatas)
 
-    prompt = build_prompt(message, context, conversation_context)
+    prompt = build_prompt(message, context, conversation_context, relaxed=relaxed)  # <-- passa relaxed
 
     if model:
         answer = await ollama_client.generate_completion(prompt, model=model, temperature=0.0)
