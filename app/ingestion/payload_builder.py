@@ -5,25 +5,23 @@ from typing import Dict, Any
 from dotenv import load_dotenv
 
 from .semantic_enricher import enrich
-from .technical_crawler import crawl   # crawl SEMPRE attivo
+from .technical_crawler import crawl
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-MAX_TOKENS = int(os.getenv("MAX_TOKENS_PAYLOAD_BUILDER", 400))
+MAX_TOKENS = int(os.getenv("MAX_TOKENS_PAYLOAD_BUILDER", 512))
 CHARS_PER_TOKEN = int(os.getenv("CHARS_PER_TOKEN_PAYLOAD_BUILDER", 3))
 MAX_CHARS = MAX_TOKENS * CHARS_PER_TOKEN
-
-SEP = "[SEP]"
 
 FIELD_LABELS = {
     "title": "Title",
     "description": "Description",
-    "keyword": "Keywords",        # <-- NUOVO (Dataset): lista di parole chiave
-    "theme": "Theme",             # <-- NUOVO (Dataset): es. 'ENVI'
-    "publisher": "Publisher",     # <-- NUOVO (Dataset)
-    "landingPage": "LandingPage", # <-- NUOVO (Dataset): pagina del dataset
+    "keyword": "Keywords",
+    "theme": "Theme",
+    "publisher": "Publisher",
+    "landingPage": "LandingPage",
     "format": "Format",
     "license": "License",
     "downloadURL": "URL",
@@ -31,17 +29,23 @@ FIELD_LABELS = {
     "modifiedDate": "Updated",
     "releaseDate": "Published",
     "rights": "Rights",
+    "name": "Name",              # utile per POI ed entita' senza title
+    "address": "Address",
 }
 
 JUNK = {"", '\\"\\"', '""', "N/A"}
 
-# Title/Description nel blocco semantico, non ripetuti nel tecnico.
-TECH_EXCLUDE = {"Title", "Description"}
-
 ENABLE_ENRICHMENT = os.getenv("ENABLE_ENRICHMENT", "true").strip().lower() in ("1", "true", "yes", "on")
+
+# Se true, include blocco tecnico + crawl nel vettore anche per le entita' CON
+# semantica (sconsigliato per la qualita'). Il fallback per le entita' SENZA
+# semantica usa comunque gli attributi, a prescindere da questo flag.
+INCLUDE_TECHNICAL = os.getenv("INCLUDE_TECHNICAL_IN_EMBEDDING", "false").strip().lower() in ("1", "true", "yes", "on")
 
 
 def _truncate(text: str, max_chars: int) -> str:
+    if max_chars <= 0:
+        return ""
     if len(text) <= max_chars:
         return text
     return text[:max_chars].rsplit(" ", 1)[0] + "..."
@@ -51,7 +55,6 @@ def _clean_value(raw: Any) -> str:
     if isinstance(raw, dict):
         return str(raw.get("@value", "")).strip()
     if isinstance(raw, list):
-        # NUOVO: keyword/theme in NGSI-LD sono spesso LISTE -> uniscile con virgola
         return ", ".join(_clean_value(x) for x in raw if x not in (None, "")).strip()
     return str(raw).strip()
 
@@ -66,48 +69,52 @@ def extract_attrs(entity: Dict[str, Any]) -> Dict[str, str]:
     return out
 
 
+def _attrs_to_text(attrs: Dict[str, str]) -> str:
+    return " | ".join(f"{k}: {v}" for k, v in attrs.items())
+
+
 async def build_payload(dataset: Dict[str, Any]) -> str:
+    """
+    Testo da vettorizzare.
+    - Entita' CON semantica (es. Dataset): solo testo semantico (miglior retrieval).
+    - Entita' SENZA semantica (POI, TrafficFlowObserved, Distribution spoglie):
+      fallback sugli attributi, cosi' il chunk NON e' vuoto ed e' cercabile.
+    """
     dataset_id = dataset.get("_id", {}).get("id", "")
     attrs = extract_attrs(dataset)
-    logger.debug(f"[payload] {dataset_id}: attributi -> {list(attrs.keys())}")
 
     title = attrs.get("Title") or str(dataset.get("title", "")).strip()
     description = attrs.get("Description") or str(dataset.get("description", "")).strip()
     theme = attrs.get("Theme", "")
     keywords = attrs.get("Keywords", "")
 
-    # SEMANTIC BLOCK: titolo + descrizione + tema + keyword (+ arricchimento)
     semantic_text = " ".join(p for p in [title, description, theme, keywords] if p).strip()
     if ENABLE_ENRICHMENT and semantic_text:
-        semantic_terms = await enrich(semantic_text)
-        if semantic_terms:
-            semantic_content = f"{semantic_text} {' '.join(semantic_terms)}".strip()
-        else:
-            semantic_content = semantic_text
+        terms = await enrich(semantic_text)
+        if terms:
+            semantic_text = f"{semantic_text} {' '.join(terms)}".strip()
+
+    if semantic_text:
+        # --- percorso normale: solo semantico (+ tecnico se richiesto dal flag) ---
+        document = semantic_text
+        if INCLUDE_TECHNICAL:
+            tech_parts = [f"{k}: {v}" for k, v in attrs.items() if k not in ("Title", "Description")]
+            crawled = await crawl(dataset)
+            if crawled:
+                tech_parts.append(crawled)
+            technical = " | ".join(tech_parts)
+            room = MAX_CHARS - len(document) - 1
+            if room > 0 and technical:
+                document = f"{document} {_truncate(technical, room)}".strip()
     else:
-        semantic_content = semantic_text or "N/A"
-        if not semantic_text:
-            logger.debug(f"[payload] {dataset_id}: blocco semantico VUOTO -> 'N/A'")
+        # --- FALLBACK: entita' senza titolo/descrizione -> usa gli attributi ---
+        tech_parts = [f"{k}: {v}" for k, v in attrs.items()]
+        crawled = await crawl(dataset)
+        if crawled:
+            tech_parts.append(crawled)
+        document = " | ".join(tech_parts).strip() or "N/A"
+        logger.debug(f"[payload] {dataset_id}: nessuna semantica -> fallback sugli attributi")
 
-    # TECHNICAL BLOCK: scalari (senza Title/Description) + crawl()
-    tech_parts = [f"{k}: {v}" for k, v in attrs.items() if k not in TECH_EXCLUDE]
-    crawled = await crawl(dataset)
-    if crawled:
-        tech_parts.append(crawled)
-    technical_content = " | ".join(tech_parts) if tech_parts else "N/A"
-
-    # DESCRIPTION BLOCK: solo DatasetID
-    desc_parts = []
-    if dataset_id:
-        desc_parts.append(f"DatasetID: {dataset_id}")
-    description_content = " | ".join(desc_parts) if desc_parts else "N/A"
-
-    payload = (f"[SEMANTIC BLOCK] {semantic_content} {SEP} "
-               f"[TECHNICAL BLOCK] {technical_content} {SEP} "
-               f"[DESCRIPTION BLOCK] {description_content}")
-
-    logger.debug(f"[payload] {dataset_id}: {len(payload)} char (semantic={len(semantic_content)})")
-    if len(payload) > MAX_CHARS:
-        logger.debug(f"[payload] {dataset_id}: payload {len(payload)} > MAX_CHARS {MAX_CHARS}: verra' troncato")
-
-    return _truncate(payload, MAX_CHARS)
+    document = _truncate(document, MAX_CHARS)
+    logger.debug(f"[payload] {dataset_id}: document {len(document)} char")
+    return document
