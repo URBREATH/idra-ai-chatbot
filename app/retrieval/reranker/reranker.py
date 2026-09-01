@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from app.common.utils.reranker_encoder import get_cross_encoder
 
 load_dotenv()
-DEFAULT_TOP_K = int(os.getenv("DEFAULT_TOP_K", 3))
+DEFAULT_TOP_K = int(os.getenv("DEFAULT_TOP_K", 10))
 
 
 def _distance_based_rank(distances: list[float], top_k: int = DEFAULT_TOP_K) -> list[int]:

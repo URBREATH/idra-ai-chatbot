@@ -18,17 +18,13 @@ CURSOR_LENGTH = int(_raw_cursor) if _raw_cursor.isdigit() else None
 # ============================================================================
 # QUALE TIPO DI ENTITA' INDICIZZARE
 # ----------------------------------------------------------------------------
-# In Mongo convivono piu' tipi (Dataset, DistributionDCAT-AP, PointOfInterest,
-# TrafficFlowObserved). Per il caso d'uso "consiglia dai metadati" servono le
-# entita' Dataset, che hanno descrizione/tema/keyword. Le Distribution sono file
-# scaricabili senza descrizione, i POI e i TrafficFlow sono altro.
-# Default: solo Dataset. Per indicizzare TUTTI i tipi, metti INGEST_ENTITY_TYPE=
-# (vuoto) nel .env.
+# DEFAULT ORA: VUOTO -> indicizza TUTTI i tipi (Dataset, Distribution,
+# PointOfInterest, TrafficFlowObserved, ...).
+# Per restringere a un solo tipo, valorizza INGEST_ENTITY_TYPE nel .env con la
+# URI del tipo, es.:
+#   INGEST_ENTITY_TYPE=https://uri.etsi.org/ngsi-ld/default-context/Dataset
 # ============================================================================
-INGEST_ENTITY_TYPE = os.getenv(
-    "INGEST_ENTITY_TYPE",
-    "https://uri.etsi.org/ngsi-ld/default-context/Dataset"
-).strip()
+INGEST_ENTITY_TYPE = os.getenv("INGEST_ENTITY_TYPE", "").strip()
 
 logger.debug(f"[mongo] COLLECTION={COLLECTION!r}, "
              f"CURSOR_LENGTH={'tutti' if CURSOR_LENGTH is None else CURSOR_LENGTH}, "
@@ -37,7 +33,7 @@ logger.debug(f"[mongo] COLLECTION={COLLECTION!r}, "
 
 def _base_filter() -> Dict[str, Any]:
     f = {"_id.servicePath": "/"}
-    if INGEST_ENTITY_TYPE:                 # se vuoto -> nessun filtro di tipo
+    if INGEST_ENTITY_TYPE:                 # se vuoto -> nessun filtro di tipo (tutti)
         f["_id.type"] = INGEST_ENTITY_TYPE
     return f
 
@@ -59,7 +55,7 @@ async def get_datasets_since(tenant_id: str, last_ingestion: datetime) -> List[D
                  f"({'TUTTI' if since_epoch == 0 else 'incrementale'}); filtro={filter_query}")
     cursor = collection.find(filter_query)
     docs = await cursor.to_list(length=CURSOR_LENGTH)
-    logger.debug(f"[mongo] get_datasets_since -> {len(docs)} dataset da processare")
+    logger.debug(f"[mongo] get_datasets_since -> {len(docs)} entita' da processare")
     if CURSOR_LENGTH is not None and len(docs) == CURSOR_LENGTH:
         logger.debug(f"[mongo] ATTENZIONE: risultati == CURSOR_LENGTH ({CURSOR_LENGTH}): "
                      f"possibili documenti troncati. Alza CURSOR_LENGTH.")
@@ -87,12 +83,11 @@ async def get_deleted_dataset_ids(tenant_id: str, last_ingestion: datetime) -> L
 
 
 async def get_all_dataset_ids(tenant_id: str) -> List[str]:
-    # NB: qui NON filtriamo per tipo, di proposito: serve a cancellare da Chroma
-    # TUTTO cio' che era stato indicizzato prima (anche altri tipi), cosi' un
-    # full_reindex fa pulizia completa prima di reinserire solo i Dataset.
+    # Nessun filtro di tipo: restituisce TUTTI gli id, cosi' un full_reindex
+    # fa pulizia completa in Chroma prima di reinserire.
     collection = db[COLLECTION]
     cursor = collection.find({"_id.servicePath": "/"}, projection={"_id": 1})
     records = await cursor.to_list(length=CURSOR_LENGTH)
     ids = [r["_id"]["id"] for r in records if r.get("_id", {}).get("id") is not None]
-    logger.debug(f"[mongo] get_all_dataset_ids -> {len(ids)} id (tutti i tipi, per pulizia)")
+    logger.debug(f"[mongo] get_all_dataset_ids -> {len(ids)} id (tutti i tipi)")
     return ids
