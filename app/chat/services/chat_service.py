@@ -12,26 +12,36 @@ from app.retrieval.reranker.reranker import rerank
 from app.retrieval.context.context_assembler import assemble_context
 from app.ollama import client as ollama_client
 from app.conversation import services as conversation_services
-from app.config.config import _SYSTEM_INSTRUCTIONS, _NO_RESULT_INSTRUCTIONS, _RELAXED_NOTICE, DISTANCE_THRESHOLD
+from app.config.config import _SYSTEM_INSTRUCTIONS, _NO_RESULT_INSTRUCTIONS, _RELAXED_NOTICE
 
 logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-if not logger.handlers:
-    _h = logging.StreamHandler()          # va su stderr, dove Uvicorn manda i suoi log
-    _h.setLevel(logging.DEBUG)
+logging.getLogger("app").setLevel(logging.DEBUG)  # <-- adatta 'app' al package radice
+if not logging.getLogger().handlers:
+    _h = logging.StreamHandler()
     _h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
-    logger.addHandler(_h)
-    logger.propagate = False
+    logging.getLogger().addHandler(_h)
+logger = logging.getLogger(__name__)
 
-TOP_K = int(os.getenv("TOP_K", 5))
-
+TOP_K = int(os.getenv("TOP_K", 10))
 DISTANCE_THRESHOLD = float(os.getenv("DISTANCE_THRESHOLD", "0.55"))
 DISTANCE_THRESHOLD_STEP = float(os.getenv("DISTANCE_THRESHOLD_STEP", "0.10"))
 DISTANCE_THRESHOLD_MAX = float(os.getenv("DISTANCE_THRESHOLD_MAX", "0.75"))
+LOG_TOP_FOUND = int(os.getenv("LOG_TOP_FOUND", 10))
+
+
+def _log_found_resources(documents, metadatas, distances) -> None:
+    n_show = min(LOG_TOP_FOUND, len(documents))
+    logger.debug("Prime %d risorse trovate (soglia base=%.3f, tetto=%.3f):",
+                 n_show, DISTANCE_THRESHOLD, DISTANCE_THRESHOLD_MAX)
+    for rank in range(n_show):
+        meta = metadatas[rank] or {}
+        dist = distances[rank]
+        label = meta.get("title") or meta.get("dataset_id") or "(senza titolo)"
+        entro = "OK " if dist <= DISTANCE_THRESHOLD else "  -"
+        logger.debug("  #%2d  dist=%.4f  [%s]  %s", rank + 1, dist, entro, label)
 
 
 def _build_no_result_prompt(message: str, conversation_context: str = "") -> str:
@@ -49,32 +59,21 @@ def _build_no_result_prompt(message: str, conversation_context: str = "") -> str
     return "\n".join(parts)
 
 
-def build_prompt(
-        message: str,
-        retrieval_context: str,
-        conversation_context: str | None = None,
-        relaxed: bool = False,  # <-- NUOVO
-) -> str:
+def build_prompt(message, retrieval_context, conversation_context=None, relaxed=False) -> str:
     retrieval_block = retrieval_context if retrieval_context else "(no context available)"
-
     prompt_parts = [_SYSTEM_INSTRUCTIONS]
-
-    if relaxed:  # <-- NUOVO: avviso di ricerca allargata
+    if relaxed:
         prompt_parts.append(_RELAXED_NOTICE)
-
     if conversation_context:
         prompt_parts.append("Previous conversation:")
         prompt_parts.append(conversation_context)
         prompt_parts.append("")
-
-    prompt_parts.append("Context (from dataset catalog):")
+    prompt_parts.append("Context (metadata of the retrieved resources):")
     prompt_parts.append(retrieval_block)
     prompt_parts.append("")
-
     prompt_parts.append(f"Question: {message}")
     prompt_parts.append("")
     prompt_parts.append("Answer:")
-
     return "\n".join(prompt_parts)
 
 
@@ -99,9 +98,7 @@ async def generate_answer(
     if user_id:
         try:
             conversation_context = await conversation_services.get_context_for_llm(
-                conversation_id=conversation_id,
-                tenant_id=tenant_id,
-                limit=10,
+                conversation_id=conversation_id, tenant_id=tenant_id, limit=10,
             )
         except Exception as e:
             logger.debug(f"Could not load conversation context: {e}")
@@ -110,10 +107,8 @@ async def generate_answer(
     if user_id:
         try:
             await conversation_services.append_user_message(
-                conversation_id=conversation_id,
-                tenant_id=tenant_id,
-                user_id=user_id,
-                message_content=message,
+                conversation_id=conversation_id, tenant_id=tenant_id,
+                user_id=user_id, message_content=message,
             )
         except Exception as e:
             logger.debug(f"Could not persist user message: {e}")
@@ -122,18 +117,12 @@ async def generate_answer(
         if user_id:
             try:
                 await conversation_services.append_assistant_message(
-                    conversation_id=conversation_id,
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    message_content=answer_text,
+                    conversation_id=conversation_id, tenant_id=tenant_id,
+                    user_id=user_id, message_content=answer_text,
                 )
             except Exception as e:
                 logger.debug(f"Could not persist assistant message: {e}")
-        return ChatResponse(
-            answer=answer_text,
-            sources=sources_list,
-            conversationId=conversation_id,
-        )
+        return ChatResponse(answer=answer_text, sources=sources_list, conversationId=conversation_id)
 
     async def _no_result() -> "ChatResponse":
         prompt = _build_no_result_prompt(message, conversation_context)
@@ -149,25 +138,24 @@ async def generate_answer(
 
     query_embedding = await embed_query(message)
     if not query_embedding:
-        logger.debug("Empty query embedding; returning no-result workflow")
+        logger.debug("Empty query embedding; no-result workflow")
         return await _no_result()
 
     raw_results = vector_search(tenant_id, query_embedding)
-    documents: list[str] = (raw_results.get("documents") or [[]])[0]
-    metadatas: list[dict] = (raw_results.get("metadatas") or [[]])[0]
-    distances: list[float] = (raw_results.get("distances") or [[]])[0]
+    documents = (raw_results.get("documents") or [[]])[0]
+    metadatas = (raw_results.get("metadatas") or [[]])[0]
+    distances = (raw_results.get("distances") or [[]])[0]
+
     logger.debug("distances for query %r: %s", message, distances)
+    if documents:
+        _log_found_resources(documents, metadatas, distances)
 
     if not documents:
-        logger.debug("No chunks retrieved for tenant %s; no-result workflow", tenant_id)
+        logger.debug("Nessun candidato per tenant %s; no-result workflow", tenant_id)
         return await _no_result()
 
-    # ------------------------------------------------------------------------
-    # Filtro iniziale con la soglia base, poi allargamento a piccoli passi.
-    # ------------------------------------------------------------------------
     threshold = DISTANCE_THRESHOLD
     kept = [i for i, d in enumerate(distances) if d <= threshold]
-
     relaxed = False
     while not kept and threshold < DISTANCE_THRESHOLD_MAX:
         threshold = round(min(threshold + DISTANCE_THRESHOLD_STEP, DISTANCE_THRESHOLD_MAX), 4)
@@ -178,8 +166,7 @@ async def generate_answer(
                          DISTANCE_THRESHOLD, threshold, len(kept))
 
     if not kept:
-        logger.debug("Nessun risultato entro la soglia massima %.3f; no-result workflow",
-                     DISTANCE_THRESHOLD_MAX)
+        logger.debug("Nessun risultato entro la soglia massima %.3f; no-result", DISTANCE_THRESHOLD_MAX)
         return await _no_result()
 
     documents = [documents[i] for i in kept]
@@ -192,9 +179,15 @@ async def generate_answer(
 
     top_documents = [documents[i] for i in top_indices]
     top_metadatas = [metadatas[i] for i in top_indices]
+
+    logger.debug("Risorse passate all'LLM (dopo soglia e rerank): %s",
+                 [(m or {}).get("title") or (m or {}).get("dataset_id") for m in top_metadatas])
+
+    # NB: assemble_context deve includere i metadati (title, description, format,
+    # license, url), perche' il documento vettorizzato ora e' solo semantico.
     context, sources = assemble_context(top_documents, top_metadatas)
 
-    prompt = build_prompt(message, context, conversation_context, relaxed=relaxed)  # <-- passa relaxed
+    prompt = build_prompt(message, context, conversation_context, relaxed=relaxed)
 
     if model:
         answer = await ollama_client.generate_completion(prompt, model=model, temperature=0.0)

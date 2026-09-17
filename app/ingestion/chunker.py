@@ -22,18 +22,10 @@ def _hard_truncate(text: str) -> str:
 
 
 async def chunk_payload(payload: str, dataset_id: str) -> List[Dict[str, Any]]:
-    """
-    UN dataset -> UN chunk. Il testo arriva gia' pulito da build_payload.
-    Nessun marcatore da ricostruire, nessun annidamento, nessuno split SDMX.
-    """
+    """UN dataset -> UN chunk. Testo gia' pulito da build_payload."""
     if not payload or not payload.strip():
         logger.debug(f"[chunk] {dataset_id}: payload vuoto -> 0 chunk")
         return []
-
     text = _hard_truncate(payload.strip())
     logger.debug(f"[chunk] {dataset_id}: 1 chunk, {len(text)} char")
-    return [{
-        "dataset_id": dataset_id,
-        "chunk_id": f"{dataset_id}_chunk_1",
-        "text": text,
-    }]
+    return [{"dataset_id": dataset_id, "chunk_id": f"{dataset_id}_chunk_1", "text": text}]
