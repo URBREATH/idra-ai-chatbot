@@ -16,30 +16,17 @@ CHARS_PER_TOKEN = int(os.getenv("CHARS_PER_TOKEN_PAYLOAD_BUILDER", 3))
 MAX_CHARS = MAX_TOKENS * CHARS_PER_TOKEN
 
 FIELD_LABELS = {
-    "title": "Title",
-    "description": "Description",
-    "keyword": "Keywords",
-    "theme": "Theme",
-    "publisher": "Publisher",
-    "landingPage": "LandingPage",
-    "format": "Format",
-    "license": "License",
-    "downloadURL": "URL",
-    "accessUrl": "AccessURL",
-    "modifiedDate": "Updated",
-    "releaseDate": "Published",
-    "rights": "Rights",
-    "name": "Name",              # utile per POI ed entita' senza title
-    "address": "Address",
+    "title": "Title", "description": "Description", "datasetDescription": "Description", "keyword": "Keywords",
+    "theme": "Theme", "publisher": "Publisher", "landingPage": "LandingPage",
+    "format": "Format", "license": "License", "downloadURL": "URL",
+    "accessUrl": "AccessURL", "modifiedDate": "Updated", "releaseDate": "Published",
+    "rights": "Rights", "name": "Name", "address": "Address",
 }
 
 JUNK = {"", '\\"\\"', '""', "N/A"}
 
 ENABLE_ENRICHMENT = os.getenv("ENABLE_ENRICHMENT", "true").strip().lower() in ("1", "true", "yes", "on")
-
-# Se true, include blocco tecnico + crawl nel vettore anche per le entita' CON
-# semantica (sconsigliato per la qualita'). Il fallback per le entita' SENZA
-# semantica usa comunque gli attributi, a prescindere da questo flag.
+# Default: vettore SOLO semantico (miglior retrieval). I campi tecnici stanno nei metadati.
 INCLUDE_TECHNICAL = os.getenv("INCLUDE_TECHNICAL_IN_EMBEDDING", "false").strip().lower() in ("1", "true", "yes", "on")
 
 
@@ -69,17 +56,7 @@ def extract_attrs(entity: Dict[str, Any]) -> Dict[str, str]:
     return out
 
 
-def _attrs_to_text(attrs: Dict[str, str]) -> str:
-    return " | ".join(f"{k}: {v}" for k, v in attrs.items())
-
-
 async def build_payload(dataset: Dict[str, Any]) -> str:
-    """
-    Testo da vettorizzare.
-    - Entita' CON semantica (es. Dataset): solo testo semantico (miglior retrieval).
-    - Entita' SENZA semantica (POI, TrafficFlowObserved, Distribution spoglie):
-      fallback sugli attributi, cosi' il chunk NON e' vuoto ed e' cercabile.
-    """
     dataset_id = dataset.get("_id", {}).get("id", "")
     attrs = extract_attrs(dataset)
 
@@ -95,7 +72,6 @@ async def build_payload(dataset: Dict[str, Any]) -> str:
             semantic_text = f"{semantic_text} {' '.join(terms)}".strip()
 
     if semantic_text:
-        # --- percorso normale: solo semantico (+ tecnico se richiesto dal flag) ---
         document = semantic_text
         if INCLUDE_TECHNICAL:
             tech_parts = [f"{k}: {v}" for k, v in attrs.items() if k not in ("Title", "Description")]
@@ -107,7 +83,7 @@ async def build_payload(dataset: Dict[str, Any]) -> str:
             if room > 0 and technical:
                 document = f"{document} {_truncate(technical, room)}".strip()
     else:
-        # --- FALLBACK: entita' senza titolo/descrizione -> usa gli attributi ---
+        # Fallback per entita' senza titolo/descrizione (POI, TrafficFlow, ...)
         tech_parts = [f"{k}: {v}" for k, v in attrs.items()]
         crawled = await crawl(dataset)
         if crawled:

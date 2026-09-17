@@ -9,7 +9,6 @@ def _is_geometry(value: Any) -> bool:
 
 
 def _collect_terms(value: Any, terms: List[str], seen: set) -> None:
-    """Recursively walk the dataset structure collecting all string/number values."""
     if isinstance(value, bool):
         return
     if isinstance(value, dict):
@@ -28,11 +27,10 @@ def _collect_terms(value: Any, terms: List[str], seen: set) -> None:
 
 
 async def crawl(dataset: Dict[str, Any]) -> str:
-    """Recursive scan of dataset structure. Output: deduplicated, space-joined string."""
     terms: List[str] = []
     seen: set = set()
     _collect_terms(dataset, terms, seen)
     result = " ".join(terms)
     dataset_id = dataset.get("_id", {}).get("id", "?")
-    logger.debug(f"[crawl] {dataset_id}: raccolti {len(terms)} termini, {len(result)} char")
+    logger.debug(f"[crawl] {dataset_id}: {len(terms)} termini, {len(result)} char")
     return result
