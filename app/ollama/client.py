@@ -18,7 +18,11 @@ async def list_models() -> list[str]:
 
 async def generate_embedding(text: str, model: str = os.getenv("OLLAMA_EMBEDDING_MODEL", "mxbai-embed-large")) -> list[float]:
     async with httpx.AsyncClient() as client:
-        resp = await client.post(f"{BASE_URL}/api/embeddings", json={"model": model, "prompt": text})
+        resp = await client.post(
+            f"{BASE_URL}/api/embeddings",
+            json={"model": model, "prompt": text, "keep_alive": -1},
+            timeout=httpx.Timeout(connect=10.0, read=1200.0, write=30.0, pool=30.0),
+        )
         resp.raise_for_status()
         data = resp.json()
         return data.get("embedding", [])
