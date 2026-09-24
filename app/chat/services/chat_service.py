@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 from app.chat.dto.models import ChatResponse
 from app.retrieval.embeddings.query_embedder import embed_query
-from app.retrieval.vector_search.searcher import vector_search
+from app.retrieval.vector_search.searcher import vector_search, DEFAULT_N_RESULTS
 from app.retrieval.reranker.reranker import rerank
 from app.retrieval.context.context_assembler import assemble_context
 from app.ollama import client as ollama_client
@@ -30,6 +30,34 @@ DISTANCE_THRESHOLD = float(os.getenv("DISTANCE_THRESHOLD", "0.55"))
 DISTANCE_THRESHOLD_STEP = float(os.getenv("DISTANCE_THRESHOLD_STEP", "0.10"))
 DISTANCE_THRESHOLD_MAX = float(os.getenv("DISTANCE_THRESHOLD_MAX", "0.75"))
 LOG_TOP_FOUND = int(os.getenv("LOG_TOP_FOUND", 10))
+MAX_N_RESULTS = int(os.getenv("MAX_N_RESULTS", 100))
+
+_N_RESULTS_ANALYSIS_PROMPT = (
+    "You are a query analyser. Given the user query below, estimate how many "
+    "search results should be retrieved from the database. "
+    "Return ONLY a single integer, nothing else.\n"
+    "- If the query is specific/narrow (e.g. a single topic, a name, a date), return a low number (1-15).\n"
+    "- If the query is broad (e.g. a theme, a category), return a medium number (16-50).\n"
+    "- If the query asks for ALL, every, complete list, catalogue, or comprehensive results, "
+    f"return a high number (51-{MAX_N_RESULTS}).\n"
+    "\n"
+    "Query: \"{message}\"\n"
+    "Integer:"
+)
+
+
+async def _determine_n_results(message: str) -> int:
+    """Use the LLM to estimate the appropriate number of search results for the query."""
+    try:
+        prompt = _N_RESULTS_ANALYSIS_PROMPT.format(message=message)
+        raw = await ollama_client.generate_completion(prompt, temperature=0.0)
+        number = int(raw.strip())
+        clamped = max(1, min(number, MAX_N_RESULTS))
+        logger.debug("LLM determined n_results=%d (raw=%r, clamped to [1, %d])", clamped, raw.strip(), MAX_N_RESULTS)
+        return clamped
+    except Exception as e:
+        logger.debug("Could not determine n_results via LLM (%s), falling back to DEFAULT_N_RESULTS=%d", e, DEFAULT_N_RESULTS)
+        return DEFAULT_N_RESULTS
 
 
 def _log_found_resources(documents, metadatas, distances) -> None:
@@ -141,7 +169,8 @@ async def generate_answer(
         logger.debug("Empty query embedding; no-result workflow")
         return await _no_result()
 
-    raw_results = vector_search(tenant_id, query_embedding)
+    n_results = await _determine_n_results(message)
+    raw_results = vector_search(tenant_id, query_embedding, n_results=n_results)
     documents = (raw_results.get("documents") or [[]])[0]
     metadatas = (raw_results.get("metadatas") or [[]])[0]
     distances = (raw_results.get("distances") or [[]])[0]
