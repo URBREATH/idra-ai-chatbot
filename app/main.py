@@ -45,7 +45,6 @@ settings = Settings()
 from .ingestion.service import get_ingestion_status, ingest_tenant
 from .auth import require_admin_authorization
 from .chat.controllers.chat_controller import router as chat_router
-from .chat.dto.models import ChatRequest, ChatResponse, SourceReference
 from .conversation import repositories as conversation_repositories
 
 @asynccontextmanager
@@ -73,16 +72,6 @@ _metrics: dict[str, int] = {
     "feedback_negative": 0,
     "ingestion_runs": 0,
 }
-
-
-"""@app.get("/health")
-async def health():
-    return {
-        "status": "UP",
-        "mongo": "UNKNOWN",
-        "chroma": "UNKNOWN",
-        "ollama": "UNKNOWN",
-    }"""
 
 @app.get("/health")
 async def health(response: Response):

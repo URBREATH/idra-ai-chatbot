@@ -18,11 +18,13 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-logging.getLogger("app").setLevel(logging.DEBUG)  # <-- adatta 'app' al package radice
-if not logging.getLogger().handlers:
-    _h = logging.StreamHandler()
-    _h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
-    logging.getLogger().addHandler(_h)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    force=True,          # <-- rimuove gli handler esistenti e reimposta i tuoi
+)
+logging.getLogger("app").setLevel(logging.DEBUG)   # i tuoi moduli restano a DEBUG
 logger = logging.getLogger(__name__)
 
 TOP_K = int(os.getenv("TOP_K", 10))

@@ -35,7 +35,7 @@ async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MO
                 "model": model,
                 "messages": [{"role": "user", "content": prompt}],
                 "stream": False,
-                "options": {"temperature": temperature, "num_ctx": 8192, "num_predict": 1024}
+                "options": {"temperature": temperature, "num_ctx": 4096, "num_predict": 1024}
             },
             timeout=httpx.Timeout(connect=10.0, read=1200.0, write=30.0, pool=30.0),
         )
