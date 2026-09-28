@@ -15,15 +15,7 @@ COLLECTION = os.getenv("COLLECTION")
 _raw_cursor = os.getenv("CURSOR_LENGTH", "").strip()
 CURSOR_LENGTH = int(_raw_cursor) if _raw_cursor.isdigit() else None
 
-# ============================================================================
-# QUALE TIPO DI ENTITA' INDICIZZARE
-# ----------------------------------------------------------------------------
-# DEFAULT ORA: VUOTO -> indicizza TUTTI i tipi (Dataset, Distribution,
-# PointOfInterest, TrafficFlowObserved, ...).
-# Per restringere a un solo tipo, valorizza INGEST_ENTITY_TYPE nel .env con la
-# URI del tipo, es.:
-#   INGEST_ENTITY_TYPE=https://uri.etsi.org/ngsi-ld/default-context/Dataset
-# ============================================================================
+
 INGEST_ENTITY_TYPE = os.getenv("INGEST_ENTITY_TYPE", "").strip()
 
 logger.debug(f"[mongo] COLLECTION={COLLECTION!r}, "

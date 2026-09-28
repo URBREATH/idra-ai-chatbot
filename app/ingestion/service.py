@@ -20,14 +20,10 @@ from ..chroma.client import get_tenant_collection, delete_documents_from_collect
 
 load_dotenv()
 
-# LOGGING: abilita DEBUG per tutti i moduli app.* (senza attivare il debug delle
-# librerie di terze parti) e garantisci un handler. NON usiamo basicConfig, che
-# sotto Uvicorn verrebbe ignorato.
 logging.getLogger("app").setLevel(logging.DEBUG)  # <-- adatta 'app' al package radice
-if not logging.getLogger().handlers:
-    _h = logging.StreamHandler()
-    _h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
-    logging.getLogger().addHandler(_h)
+_h = logging.StreamHandler()
+_h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+logging.getLogger().addHandler(_h)
 logger = logging.getLogger(__name__)
 
 BATCH_SIZE = int(os.getenv("INGESTION_BATCH_SIZE", 500))
