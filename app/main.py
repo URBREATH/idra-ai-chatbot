@@ -12,7 +12,7 @@ import structlog
 import httpx
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
-
+from starlette.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
@@ -60,6 +60,14 @@ app = FastAPI(
     title="European Metadata RAG Platform",
     version="1.0.0",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],      # per i test in locale va bene tutto; in produzione restringi
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],      # necessario per far passare Authorization e X-Tenant-Id
 )
 app.include_router(chat_router)
 
