@@ -1,8 +1,10 @@
 import os
 import logging
+import re
+
 from dotenv import load_dotenv
 from .client import get_database
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 load_dotenv()
@@ -15,18 +17,34 @@ COLLECTION = os.getenv("COLLECTION")
 _raw_cursor = os.getenv("CURSOR_LENGTH", "").strip()
 CURSOR_LENGTH = int(_raw_cursor) if _raw_cursor.isdigit() else None
 
-
+# Tipi di entita' da leggere. Accetta un ELENCO separato da virgola, es.
+# "Dataset,DistributionDCAT-AP". Vuoto = tutti i tipi.
 INGEST_ENTITY_TYPE = os.getenv("INGEST_ENTITY_TYPE", "").strip()
+_ENTITY_TYPES = [t.strip() for t in INGEST_ENTITY_TYPE.split(",") if t.strip()]
 
 logger.debug(f"[mongo] COLLECTION={COLLECTION!r}, "
              f"CURSOR_LENGTH={'tutti' if CURSOR_LENGTH is None else CURSOR_LENGTH}, "
-             f"INGEST_ENTITY_TYPE={INGEST_ENTITY_TYPE or 'TUTTI I TIPI'}")
+             f"INGEST_ENTITY_TYPE={_ENTITY_TYPES or 'TUTTI I TIPI'}")
+
+
+def _type_filter() -> Optional[Dict[str, Any]]:
+    """
+    Filtro su _id.type che matcha l'ULTIMO segmento del tipo, cosi' funziona sia
+    se in Mongo il tipo e' una stringa secca ('Dataset') sia se e' un URL
+    ('https://uri.etsi.org/ngsi-ld/default-context/Dataset'). Case-insensitive.
+    Con piu' tipi usa $in (basta che ne matchi uno). Vuoto -> nessun filtro di tipo.
+    """
+    if not _ENTITY_TYPES:
+        return None
+    regexes = [re.compile(rf"(^|[/#]){re.escape(t)}$", re.IGNORECASE) for t in _ENTITY_TYPES]
+    return {"$in": regexes}
 
 
 def _base_filter() -> Dict[str, Any]:
-    f = {"_id.servicePath": "/"}
-    if INGEST_ENTITY_TYPE:
-        f["_id.type"] = INGEST_ENTITY_TYPE
+    f: Dict[str, Any] = {"_id.servicePath": "/"}
+    type_filter = _type_filter()
+    if type_filter is not None:
+        f["_id.type"] = type_filter  # es. {"$in": [/(^|[/#])Dataset$/i, /(^|[/#])DistributionDCAT-AP$/i]}
     return f
 
 

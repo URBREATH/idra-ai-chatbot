@@ -12,7 +12,7 @@ from app.retrieval.reranker.reranker import rerank
 from app.retrieval.context.context_assembler import assemble_context
 from app.ollama import client as ollama_client
 from app.conversation import services as conversation_services
-from app.config.config import _SYSTEM_INSTRUCTIONS, _NO_RESULT_INSTRUCTIONS, _RELAXED_NOTICE
+from app.config.config import SYSTEM_INSTRUCTIONS, NO_RESULT_INSTRUCTIONS, RELAXED_NOTICE, _NBS_INTENT, NBS_INSTRUCTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +45,13 @@ def _log_found_resources(documents, metadatas, distances) -> None:
         entro = "OK " if dist <= DISTANCE_THRESHOLD else "  -"
         logger.debug("  #%2d  dist=%.4f  [%s]  %s", rank + 1, dist, entro, label)
 
+def is_nbs_question(message: str) -> bool:
+    """True if the question asks how to SOLVE a problem (NBS mode), not just to list data."""
+    m = str(message or "").lower()
+    return any(w in m for w in _NBS_INTENT)
 
 def _build_no_result_prompt(message: str, conversation_context: str = "") -> str:
-    parts = [_NO_RESULT_INSTRUCTIONS]
+    parts = [NO_RESULT_INSTRUCTIONS]
     if conversation_context:
         parts.append("\nPrevious conversation:")
         parts.append(conversation_context)
@@ -61,11 +65,12 @@ def _build_no_result_prompt(message: str, conversation_context: str = "") -> str
     return "\n".join(parts)
 
 
-def build_prompt(message, retrieval_context, conversation_context=None, relaxed=False) -> str:
+def build_prompt(message, retrieval_context, conversation_context=None,
+                 relaxed=False, system=SYSTEM_INSTRUCTIONS) -> str:      # <-- system scelto dall'esterno
     retrieval_block = retrieval_context if retrieval_context else "(no context available)"
-    prompt_parts = [_SYSTEM_INSTRUCTIONS]
+    prompt_parts = [system]
     if relaxed:
-        prompt_parts.append(_RELAXED_NOTICE)
+        prompt_parts.append(RELAXED_NOTICE)
     if conversation_context:
         prompt_parts.append("Previous conversation:")
         prompt_parts.append(conversation_context)
@@ -135,7 +140,7 @@ async def generate_answer(
                 answer = await ollama_client.generate_completion(prompt, temperature=0.0)
         except Exception as e:
             logger.debug(f"No-result generation failed, using fallback: {e}")
-            answer = _NO_RESULT_INSTRUCTIONS
+            answer = NO_RESULT_INSTRUCTIONS
         return await _respond(answer, [])
 
     query_embedding = await embed_query(message)
@@ -185,11 +190,12 @@ async def generate_answer(
     logger.debug("Risorse passate all'LLM (dopo soglia e rerank): %s",
                  [(m or {}).get("title") or (m or {}).get("dataset_id") for m in top_metadatas])
 
-    # NB: assemble_context deve includere i metadati (title, description, format,
-    # license, url), perche' il documento vettorizzato ora e' solo semantico.
     context, sources = assemble_context(top_documents, top_metadatas)
+    logger.debug("CONTEXT PASSATO AL MODELLO:\n%s", context[:2000])
 
-    prompt = build_prompt(message, context, conversation_context, relaxed=relaxed)
+    system = NBS_INSTRUCTIONS if is_nbs_question(message) else SYSTEM_INSTRUCTIONS
+    logger.debug("PROMPT SCELTO: %s", "NBS" if is_nbs_question(message) else "GENERIC")
+    prompt = build_prompt(message, context, conversation_context, relaxed=relaxed, system=system)
 
     if model:
         answer = await ollama_client.generate_completion(prompt, model=model, temperature=0.0)

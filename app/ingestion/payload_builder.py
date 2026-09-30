@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from .semantic_enricher import enrich
 from .technical_crawler import crawl
+from ..config.config import FIELD_LABELS
 
 load_dotenv()
 
@@ -14,14 +15,6 @@ logger = logging.getLogger(__name__)
 MAX_TOKENS = int(os.getenv("MAX_TOKENS_PAYLOAD_BUILDER", 512))
 CHARS_PER_TOKEN = int(os.getenv("CHARS_PER_TOKEN_PAYLOAD_BUILDER", 3))
 MAX_CHARS = MAX_TOKENS * CHARS_PER_TOKEN
-
-FIELD_LABELS = {
-    "title": "Title", "description": "Description", "datasetDescription": "Description", "keyword": "Keywords",
-    "theme": "Theme", "publisher": "Publisher", "landingPage": "LandingPage",
-    "format": "Format", "license": "License", "downloadURL": "URL",
-    "accessUrl": "AccessURL", "modifiedDate": "Updated", "releaseDate": "Published",
-    "rights": "Rights", "name": "Name", "address": "Address",
-}
 
 JUNK = {"", '\\"\\"', '""', "N/A"}
 
