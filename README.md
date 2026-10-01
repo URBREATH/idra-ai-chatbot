@@ -168,16 +168,9 @@ curl -s http://localhost:3000/health
 ```bash
 export ADMIN_TOKEN="<value from .env.test>"
 
-curl -s -X POST http://localhost:3000/admin/ingestion/run \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"fullReindex": true}'
+curl -s -X POST http://localhost:3000/admin/ingestion/run -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' -d '{"fullReindex": true}'
 
-curl -s -w '\nHTTP %{http_code}\n' -X POST http://localhost:3000/chat \
-  -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H 'X-Tenant-Id: default-tenant' \
-  -d '{"message":"have you got some datasets related to <select city>?", "conversationId":"memory_test001"}'
+curl -s -w '\nHTTP %{http_code}\n' -X POST http://localhost:3000/chat -H 'Content-Type: application/json' -H "Authorization: Bearer $ADMIN_TOKEN" -H 'X-Tenant-Id: default-tenant' -d '{"message":"have you got some datasets related to <select city>?", "conversationId":"memory_test001"}'
 ```
 
 Copying data into MongoDB does **not** make it searchable on its own — you must run ingestion so the
@@ -215,3 +208,7 @@ with HTTP `503`, so monitors and orchestrators can react to the status code.
 ## License
 
 *(Add the project's license here — e.g. Apache-2.0 or EUPL, per the URBREATH project's conventions.)*
+
+
+
+curl -s -w '\nHTTP %{http_code}\n' -X POST http://localhost:3000/chat -H 'Content-Type: application/json' -H "Authorization: Bearer $ADMIN_TOKEN" -H 'X-Tenant-Id: default-tenant' -d '{"message":"have you got some datasets related to Cluj-Napoca?"}'

@@ -6,25 +6,25 @@ from fastapi import HTTPException
 def test_build_prompt_injects_context_and_enforces_no_hallucination():
     from app.chat.services.chat_service import build_prompt
 
-    prompt = build_prompt("Show datasets about air quality", "NO2 anomalies detected in Rome. PM10 levels critical.")
+    system, prompt = build_prompt("Show datasets about air quality", "NO2 anomalies detected in Rome. PM10 levels critical.")
 
     assert "Show datasets about air quality" in prompt
     assert "NO2 anomalies detected in Rome" in prompt
     assert "PM10 levels critical" in prompt
-    assert "context" in prompt.lower() or "contesto" in prompt.lower()
+    assert "context" in system.lower()
 
 
 def test_build_prompt_empty_context_uses_no_result_prompt():
     from app.chat.services.chat_service import build_prompt
 
-    prompt = build_prompt("Show datasets about air quality", "")
+    _, prompt = build_prompt("Show datasets about air quality", "")
     assert "Show datasets about air quality" in prompt
 
 
 def test_build_prompt_includes_previous_conversation_when_available():
     from app.chat.services.chat_service import build_prompt
 
-    prompt = build_prompt(
+    _, prompt = build_prompt(
         "And in Milan?",
         "Dataset: Air quality by city",
         "User: Show air quality in Rome\nAssistant: Here are the results",
@@ -33,6 +33,52 @@ def test_build_prompt_includes_previous_conversation_when_available():
     assert "Previous conversation:" in prompt
     assert "User: Show air quality in Rome" in prompt
     assert "Question: And in Milan?" in prompt
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("message", "language_code"), [
+    ("Dame datos de tráfico", "es"),
+    ("Mostrami i dati sul traffico", "it"),
+    ("Покажи набори даних про транспорт", "uk"),
+    ("交通データを見せてください", "ja"),
+])
+async def test_detect_language_uses_llm_iso_code(message, language_code):
+    from app.chat.services.chat_service import _detect_language
+
+    with patch(
+        "app.ollama.client.generate_completion",
+        new=AsyncMock(return_value=language_code),
+    ) as mock_llm:
+        assert await _detect_language(message) == language_code
+
+    detector_prompt = mock_llm.await_args.args[0]
+    assert message in detector_prompt
+    assert "ISO 639-1" in detector_prompt
+
+
+@pytest.mark.asyncio
+async def test_detect_language_rejects_non_iso_llm_response():
+    from app.chat.services.chat_service import _detect_language
+
+    with patch(
+        "app.ollama.client.generate_completion",
+        new=AsyncMock(return_value="The language is Spanish."),
+    ):
+        assert await _detect_language("Dame datos") is None
+
+
+def test_spanish_prompt_overrides_english_context_language():
+    from app.chat.services.chat_service import build_prompt
+
+    system, prompt = build_prompt(
+        "Dame datos de tráfico",
+        "Title: Road traffic data\nDescription: Traffic counts in European cities",
+        lang_code="es",
+    )
+
+    assert 'ISO 639-1 code "es"' in system
+    assert "exclusively in that language" in system
+    assert "Dame datos de tráfico" in prompt
 
 
 @pytest.mark.asyncio
@@ -50,14 +96,15 @@ async def test_generate_answer_returns_response_with_sources_and_conversation_id
 
     with patch("app.chroma.client.get_tenant_collection", return_value=mock_collection):
         with patch("app.ollama.client.generate_embedding", new=AsyncMock(return_value=[0.1] * 1024)):
-            with patch("app.ollama.client.generate_completion", new=AsyncMock(return_value="Based on the datasets, air quality shows anomalies.")):
-                from app.chat.services.chat_service import generate_answer
+            with patch("app.chat.services.chat_service.rerank", return_value=[0, 1]):
+                with patch("app.ollama.client.generate_completion", new=AsyncMock(return_value="Based on the datasets, air quality shows anomalies.")):
+                    from app.chat.services.chat_service import generate_answer
 
-                response = await generate_answer(
-                    message="Show datasets about air quality",
-                    conversation_id=None,
-                    tenant_id="tenant_a",
-                )
+                    response = await generate_answer(
+                        message="Show datasets about air quality",
+                        conversation_id=None,
+                        tenant_id="tenant_a",
+                    )
 
     assert response.answer == "Based on the datasets, air quality shows anomalies."
     assert response.conversationId is not None
@@ -68,26 +115,44 @@ async def test_generate_answer_returns_response_with_sources_and_conversation_id
 
 
 @pytest.mark.asyncio
-async def test_generate_answer_no_result_workflow_returns_fallback_without_llm():
+async def test_generate_answer_no_result_workflow_uses_spanish_prompt():
     mock_collection = MagicMock()
     mock_collection.query.return_value = {"ids": [[]], "distances": [[]], "metadatas": [[]], "documents": [[]]}
 
     with patch("app.chroma.client.get_tenant_collection", return_value=mock_collection):
         with patch("app.ollama.client.generate_embedding", new=AsyncMock(return_value=[0.1] * 1024)) as mock_embed:
-            with patch("app.ollama.client.generate_completion", new=AsyncMock(return_value="SHOULD NOT BE CALLED")) as mock_llm:
+            with patch("app.ollama.client.generate_completion", new=AsyncMock(side_effect=["es", "10", "No encontré recursos."])) as mock_llm:
                 from app.chat.services.chat_service import generate_answer
 
                 response = await generate_answer(
-                    message="xyz unknown topic",
+                    message="Dame datos sobre un tema desconocido",
                     conversation_id=None,
                     tenant_id="tenant_a",
                 )
 
-    assert response.answer != "SHOULD NOT BE CALLED"
+    assert response.answer == "No encontré recursos."
     assert response.sources == []
     assert response.conversationId is not None
     mock_embed.assert_awaited_once()
-    mock_llm.assert_not_awaited()
+    assert mock_llm.await_count == 3
+    no_result_call = mock_llm.await_args_list[2]
+    assert 'ISO 639-1 code "es"' in no_result_call.kwargs["system"]
+
+
+@pytest.mark.asyncio
+async def test_generate_answer_does_not_leak_instructions_when_no_result_llm_fails():
+    with patch("app.chat.services.chat_service.embed_query", new=AsyncMock(return_value=[])):
+        with patch("app.ollama.client.generate_completion", new=AsyncMock(side_effect=["es", RuntimeError("offline")])):
+            from app.chat.services.chat_service import generate_answer
+
+            response = await generate_answer(
+                message="¿Qué datos hay sobre tráfico?",
+                conversation_id=None,
+                tenant_id="tenant_a",
+            )
+
+    assert response.answer == "Unable to generate a response at this time."
+    assert "You are an assistant" not in response.answer
 
 
 @pytest.mark.asyncio
@@ -97,13 +162,14 @@ async def test_generate_answer_preserves_existing_conversation_id():
 
     with patch("app.chroma.client.get_tenant_collection", return_value=mock_collection):
         with patch("app.ollama.client.generate_embedding", new=AsyncMock(return_value=[0.1] * 1024)):
-            from app.chat.services.chat_service import generate_answer
+            with patch("app.ollama.client.generate_completion", new=AsyncMock(side_effect=["en", "10", "answer"])):
+                from app.chat.services.chat_service import generate_answer
 
-            response = await generate_answer(
-                message="anything",
-                conversation_id="existing-uuid-123",
-                tenant_id="tenant_a",
-            )
+                response = await generate_answer(
+                    message="anything",
+                    conversation_id="existing-uuid-123",
+                    tenant_id="tenant_a",
+                )
 
     assert response.conversationId == "existing-uuid-123"
 

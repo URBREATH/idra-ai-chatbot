@@ -1,0 +1,66 @@
+{
+  "answer": "1. Ho trovato il dataset \"Napoli - Heat Exposure\" che fornisce temperature di esposizione al calore calcolate a Napoli, con una media sui tratti del censimento. E' disponibile su https: //dx-lab.it/ckan/dataset/db6c4bdb-16f5-467e-aaa7-8d4566028839.\n2.  Trovi il dataset \"Napoli - Parks\" che elenca le aree verdi pubbliche di Napoli.  Lo puoi consultare qui: https: //dx-lab.it/ckan/dataset/42009c49-52b0-442b-8d6f-7c5a16e23fb9.\n3.  Ho inoltre trovato il dataset \"Napoli - Cycle Paths\" che mostra le piste ciclabili esistenti e programmate nella città e nella Città Metropolitana di Napoli.  E' disponibile qui: https: //dx-lab.it/ckan/dataset/03cae81c-6d2e-4435-9072-15ea01a85e3b. \n\nPer approfondire i dati sulle città italiane, puoi visitare i link sopra indicati e consultare le descrizioni fornite per ciascun dataset.",
+  "sources": [
+    {
+      "title": "Napoli - Heat Exposure",
+      "datasetId": "urn:ngsi-ld:Dataset:id:napoli-heat-exposure-54a1a2543ddc-76",
+      "publisher": null,
+      "url": "https://dx-lab.it/ckan/dataset/db6c4bdb-16f5-467e-aaa7-8d4566028839"
+    },
+    {
+      "title": "Molina_de_Segura-PeopleCounting",
+      "datasetId": "urn:ngsi-ld:Dataset:id:molinadesegurapeoplecounting-45275debd9b7-76",
+      "publisher": null,
+      "url": "https://dx-lab.it/ckan/dataset/cda00a6a-2018-409c-877c-5db1e4bc0fec"
+    },
+    {
+      "title": "Green area accessibility zone Vilnius - UC15",
+      "datasetId": "urn:ngsi-ld:Dataset:id:green-area-accessibility-zone-2b4cadead424-76",
+      "publisher": null,
+      "url": "https://dx-lab.it/ckan/dataset/7241bbb6-1fda-4c2e-9570-af360634b002"
+    },
+    {
+      "title": "Torre_Pacheco-PeopleCounting",
+      "datasetId": "urn:ngsi-ld:Dataset:id:torrepachecopeoplecounting-eaf9195564ce-76",
+      "publisher": null,
+      "url": "https://dx-lab.it/ckan/dataset/16bb227b-8e42-4098-9317-4c034860843f"
+    },
+    {
+      "title": "Torre_Pacheco-Noise",
+      "datasetId": "urn:ngsi-ld:Dataset:id:torrepacheconoise-6fbddd2010f0-76",
+      "publisher": null,
+      "url": "https://dx-lab.it/ckan/dataset/442b17c7-b8fb-4f5a-812c-a99d539fda5b"
+    },
+    {
+      "title": "Napoli - Parks",
+      "datasetId": "urn:ngsi-ld:Dataset:id:napoli-parks-9fada11275b9-76",
+      "publisher": null,
+      "url": "https://dx-lab.it/ckan/dataset/42009c49-52b0-442b-8d6f-7c5a16e23fb9"
+    },
+    {
+      "title": "Torre_Pacheco-Luminosity",
+      "datasetId": "urn:ngsi-ld:Dataset:id:torrepachecoluminosity-f3029c1ceabd-76",
+      "publisher": null,
+      "url": "https://dx-lab.it/ckan/dataset/ec38a102-f924-4fc4-b2cc-2c0d52c9d136"
+    },
+    {
+      "title": "Napoli - Cycle Paths",
+      "datasetId": "urn:ngsi-ld:Dataset:id:napoli-cycle-paths-aa0f4c55e582-76",
+      "publisher": null,
+      "url": "https://dx-lab.it/ckan/dataset/03cae81c-6d2e-4435-9072-15ea01a85e3b"
+    },
+    {
+      "title": "Cartagena-Noise Measures",
+      "datasetId": "urn:ngsi-ld:Dataset:id:cartagenanoise-measures-c7266bcd299c-76",
+      "publisher": null,
+      "url": "https://dx-lab.it/ckan/dataset/53423fac-de33-4e4d-ac96-ecc5c8966397"
+    },
+    {
+      "title": "Torre_Pacheco-Traffic",
+      "datasetId": "urn:ngsi-ld:Dataset:id:torrepachecotraffic-59e6f9ef6b28-76",
+      "publisher": null,
+      "url": "https://dx-lab.it/ckan/dataset/fc4f131d-8ef7-4675-a36a-e35924f4a52f"
+    }
+  ],
+  "conversationId": "chat_001"
+}

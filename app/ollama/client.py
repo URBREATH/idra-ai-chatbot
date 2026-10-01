@@ -6,7 +6,8 @@ load_dotenv()
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "localhost")
 OLLAMA_PORT = int(os.getenv("OLLAMA_PORT", "11434"))
-OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "-1")
+_keep_alive = os.getenv("OLLAMA_KEEP_ALIVE", "-1")
+OLLAMA_KEEP_ALIVE: str | int = int(_keep_alive) if _keep_alive.lstrip("-").isdigit() else _keep_alive
 BASE_URL = f"http://{OLLAMA_HOST}:{OLLAMA_PORT}"
 
 async def list_models() -> list[str]:
@@ -28,13 +29,17 @@ async def generate_embedding(text: str, model: str = os.getenv("OLLAMA_EMBEDDING
         data = resp.json()
         return data.get("embedding", [])
 
-async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MODEL", "mistral-nemo"), temperature: float = 0.0) -> str:
+async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MODEL", "mistral-nemo"), temperature: float = 0.0, system: str | None = None) -> str:
+    messages: list[dict] = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             f"{BASE_URL}/api/chat",
             json={
                 "model": model,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": messages,
                 "stream": False,
                 "keep_alive": OLLAMA_KEEP_ALIVE,
                 "options": {"temperature": temperature, "num_ctx": 8192, "num_predict": 1024}

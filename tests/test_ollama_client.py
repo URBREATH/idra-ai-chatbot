@@ -80,3 +80,25 @@ async def test_generate_completion_uses_default_model():
         
         call_args = mock_client.post.call_args
         assert "chat" in call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_generate_completion_sends_system_message_before_user_prompt():
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"message": {"content": "respuesta"}}
+    mock_response.raise_for_status = MagicMock()
+
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.post.return_value = mock_response
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+
+        from app.ollama.client import generate_completion
+        await generate_completion("pregunta", system="Responde en español")
+
+        messages = mock_client.post.call_args.kwargs["json"]["messages"]
+        assert messages == [
+            {"role": "system", "content": "Responde en español"},
+            {"role": "user", "content": "pregunta"},
+        ]
+        assert mock_client.post.call_args.kwargs["json"]["keep_alive"] == -1

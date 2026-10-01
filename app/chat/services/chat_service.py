@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 import logging
 
@@ -25,11 +26,11 @@ if not logging.getLogger().handlers:
     logging.getLogger().addHandler(_h)
 logger = logging.getLogger(__name__)
 
-TOP_K = int(os.getenv("TOP_K", 10))
+TOP_K = int(os.getenv("TOP_K", -1))
 DISTANCE_THRESHOLD = float(os.getenv("DISTANCE_THRESHOLD", "0.55"))
 DISTANCE_THRESHOLD_STEP = float(os.getenv("DISTANCE_THRESHOLD_STEP", "0.10"))
 DISTANCE_THRESHOLD_MAX = float(os.getenv("DISTANCE_THRESHOLD_MAX", "0.75"))
-LOG_TOP_FOUND = int(os.getenv("LOG_TOP_FOUND", 10))
+LOG_TOP_FOUND = int(os.getenv("LOG_TOP_FOUND", 100))
 MAX_N_RESULTS = int(os.getenv("MAX_N_RESULTS", 100))
 
 _N_RESULTS_ANALYSIS_PROMPT = (
@@ -60,8 +61,45 @@ async def _determine_n_results(message: str) -> int:
         return DEFAULT_N_RESULTS
 
 
+_LANGUAGE_DETECTION_PROMPT = (
+    "Identify the language of the user message below. Return ONLY its lowercase "
+    "ISO 639-1 two-letter code, with no punctuation or explanation. Detect the "
+    "language from the message itself, not from the topic or named entities.\n\n"
+    "User message:\n<message>{message}</message>\n\nLanguage code:"
+)
+
+
+async def _detect_language(text: str, model: str | None = None) -> str | None:
+    """Ask the LLM for the message language as an ISO 639-1 code."""
+    try:
+        kwargs = {"temperature": 0.0}
+        if model:
+            kwargs["model"] = model
+        raw = await ollama_client.generate_completion(
+            _LANGUAGE_DETECTION_PROMPT.format(message=text),
+            **kwargs,
+        )
+        code = raw.strip().lower()
+        if re.fullmatch(r"[a-z]{2}", code):
+            return code
+        logger.debug("Language detector returned an invalid code: %r", raw)
+    except Exception as e:
+        logger.debug("Could not detect query language via LLM: %s", e)
+    return None
+
+
+def _language_directive(lang_code: str | None) -> str:
+    if not lang_code:
+        return ""
+    return (
+        f'The user message language was identified as ISO 639-1 code "{lang_code}". '
+        "You MUST write the entire answer exclusively in that language. Ignore the "
+        "language of the context and conversation history.\n\n"
+    )
+
+
 def _log_found_resources(documents, metadatas, distances) -> None:
-    n_show = min(LOG_TOP_FOUND, len(documents))
+    n_show = min(MAX_N_RESULTS, len(documents))
     logger.debug("Prime %d risorse trovate (soglia base=%.3f, tetto=%.3f):",
                  n_show, DISTANCE_THRESHOLD, DISTANCE_THRESHOLD_MAX)
     for rank in range(n_show):
@@ -72,37 +110,38 @@ def _log_found_resources(documents, metadatas, distances) -> None:
         logger.debug("  #%2d  dist=%.4f  [%s]  %s", rank + 1, dist, entro, label)
 
 
-def _build_no_result_prompt(message: str, conversation_context: str = "") -> str:
-    parts = [_NO_RESULT_INSTRUCTIONS]
+def _build_no_result_prompt(message: str, conversation_context: str = "", lang_code: str | None = None) -> "tuple[str, str]":
+    system = _language_directive(lang_code) + _NO_RESULT_INSTRUCTIONS
+    user_parts: list[str] = []
     if conversation_context:
-        parts.append("\nPrevious conversation:")
-        parts.append(conversation_context)
-    parts.append(f"\nUser's question: {message}")
-    parts.append(
-        "\nIMPORTANT: If the user's question refers to items already listed in the previous "
+        user_parts.append("Previous conversation:")
+        user_parts.append(conversation_context)
+    user_parts.append(f"User's question: {message}")
+    user_parts.append(
+        "IMPORTANT: If the user's question refers to items already listed in the previous "
         "conversation (words like 'these', 'those', 'the second one'), answer using that "
-        "conversation, not a new search. Reply in the user's language."
+        "conversation, not a new search."
     )
-    parts.append("\nAnswer:")
-    return "\n".join(parts)
+    return system, "\n".join(user_parts)
 
 
-def build_prompt(message, retrieval_context, conversation_context=None, relaxed=False) -> str:
-    retrieval_block = retrieval_context if retrieval_context else "(no context available)"
-    prompt_parts = [_SYSTEM_INSTRUCTIONS]
+def build_prompt(message, retrieval_context, conversation_context=None, relaxed=False, lang_code: str | None = None) -> "tuple[str, str]":
+    system_parts: list[str] = [_language_directive(lang_code), _SYSTEM_INSTRUCTIONS]
     if relaxed:
-        prompt_parts.append(_RELAXED_NOTICE)
+        system_parts.append(_RELAXED_NOTICE)
+    system = "\n".join(system_parts)
+
+    user_parts: list[str] = []
     if conversation_context:
-        prompt_parts.append("Previous conversation:")
-        prompt_parts.append(conversation_context)
-        prompt_parts.append("")
-    prompt_parts.append("Context (metadata of the retrieved resources):")
-    prompt_parts.append(retrieval_block)
-    prompt_parts.append("")
-    prompt_parts.append(f"Question: {message}")
-    prompt_parts.append("")
-    prompt_parts.append("Answer:")
-    return "\n".join(prompt_parts)
+        user_parts.append("Previous conversation:")
+        user_parts.append(conversation_context)
+        user_parts.append("")
+    user_parts.append("Context (metadata of the retrieved resources):")
+    user_parts.append(retrieval_context if retrieval_context else "(no context available)")
+    user_parts.append("")
+    user_parts.append(f"Question: {message}")
+    user_parts.append("")
+    return system, "\n".join(user_parts)
 
 
 async def generate_answer(
@@ -126,11 +165,14 @@ async def generate_answer(
     if user_id:
         try:
             conversation_context = await conversation_services.get_context_for_llm(
-                conversation_id=conversation_id, tenant_id=tenant_id, limit=10,
+                conversation_id=conversation_id, tenant_id=tenant_id, limit=20,
             )
         except Exception as e:
             logger.debug(f"Could not load conversation context: {e}")
             conversation_context = ""
+
+    lang_code = await _detect_language(message, model=model)
+    logger.debug("Detected language for query: %s", lang_code)
 
     if user_id:
         try:
@@ -153,15 +195,15 @@ async def generate_answer(
         return ChatResponse(answer=answer_text, sources=sources_list, conversationId=conversation_id)
 
     async def _no_result() -> "ChatResponse":
-        prompt = _build_no_result_prompt(message, conversation_context)
+        system, user_prompt = _build_no_result_prompt(message, conversation_context, lang_code=lang_code)
         try:
             if model:
-                answer = await ollama_client.generate_completion(prompt, model=model, temperature=0.0)
+                answer = await ollama_client.generate_completion(user_prompt, model=model, temperature=0.0, system=system)
             else:
-                answer = await ollama_client.generate_completion(prompt, temperature=0.0)
+                answer = await ollama_client.generate_completion(user_prompt, temperature=0.0, system=system)
         except Exception as e:
             logger.debug(f"No-result generation failed, using fallback: {e}")
-            answer = _NO_RESULT_INSTRUCTIONS
+            answer = "Unable to generate a response at this time."
         return await _respond(answer, [])
 
     query_embedding = await embed_query(message)
@@ -216,11 +258,11 @@ async def generate_answer(
     # license, url), perche' il documento vettorizzato ora e' solo semantico.
     context, sources = assemble_context(top_documents, top_metadatas)
 
-    prompt = build_prompt(message, context, conversation_context, relaxed=relaxed)
+    system, user_prompt = build_prompt(message, context, conversation_context, relaxed=relaxed, lang_code=lang_code)
 
     if model:
-        answer = await ollama_client.generate_completion(prompt, model=model, temperature=0.0)
+        answer = await ollama_client.generate_completion(user_prompt, model=model, temperature=0.0, system=system)
     else:
-        answer = await ollama_client.generate_completion(prompt, temperature=0.0)
+        answer = await ollama_client.generate_completion(user_prompt, temperature=0.0, system=system)
 
     return await _respond(answer, sources)
