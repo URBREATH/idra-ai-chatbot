@@ -82,6 +82,7 @@ async def save_message(
 
 async def get_conversation_history(
     conversation_id: str,
+    user_id: str,
     tenant_id: str,
 ) -> List[Dict[str, Any]]:
     """
@@ -100,6 +101,7 @@ async def get_conversation_history(
     cursor = collection.find(
         {
             "conversationId": conversation_id,
+            "userId": user_id,
             "tenantId": tenant_id,
         },
         projection={"role": 1, "content": 1, "createdAt": 1, "userId": 1, "_id": 0}
@@ -111,6 +113,7 @@ async def get_conversation_history(
 
 async def get_recent_messages_for_context(
     conversation_id: str,
+    user_id: str,
     tenant_id: str,
     limit: int = 10,
 ) -> List[Dict[str, Any]]:
@@ -131,6 +134,7 @@ async def get_recent_messages_for_context(
     cursor = collection.find(
         {
             "conversationId": conversation_id,
+            "userId": user_id,
             "tenantId": tenant_id,
         },
         projection={"role": 1, "content": 1, "createdAt": 1, "_id": 0}
