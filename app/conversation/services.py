@@ -50,11 +50,13 @@ async def append_assistant_message(
 
 async def get_conversation(
     conversation_id: str,
+    user_id: str,
     tenant_id: str,
 ) -> ConversationHistoryDTO:
     """Retrieve full conversation history."""
     messages_raw = await repositories.get_conversation_history(
         conversation_id=conversation_id,
+        user_id=user_id,
         tenant_id=tenant_id,
     )
     
@@ -81,6 +83,7 @@ async def get_conversation(
 
 async def get_context_for_llm(
     conversation_id: str,
+    user_id:str,
     tenant_id: str,
     limit: int = 10,
 ) -> str:
@@ -95,6 +98,7 @@ async def get_context_for_llm(
     """
     messages = await repositories.get_recent_messages_for_context(
         conversation_id=conversation_id,
+        user_id=user_id,
         tenant_id=tenant_id,
         limit=limit,
     )

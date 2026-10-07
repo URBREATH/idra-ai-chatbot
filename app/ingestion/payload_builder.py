@@ -3,7 +3,7 @@ import logging
 from typing import Dict, Any
 
 from dotenv import load_dotenv
-
+import html
 from .semantic_enricher import enrich
 from .technical_crawler import crawl
 from ..config.config import FIELD_LABELS
@@ -19,7 +19,6 @@ MAX_CHARS = MAX_TOKENS * CHARS_PER_TOKEN
 JUNK = {"", '\\"\\"', '""', "N/A"}
 
 ENABLE_ENRICHMENT = os.getenv("ENABLE_ENRICHMENT", "true").strip().lower() in ("1", "true", "yes", "on")
-# Default: vettore SOLO semantico (miglior retrieval). I campi tecnici stanno nei metadati.
 INCLUDE_TECHNICAL = os.getenv("INCLUDE_TECHNICAL_IN_EMBEDDING", "false").strip().lower() in ("1", "true", "yes", "on")
 
 
@@ -33,16 +32,17 @@ def _truncate(text: str, max_chars: int) -> str:
 
 def _clean_value(raw: Any) -> str:
     if isinstance(raw, dict):
-        return str(raw.get("@value", "")).strip()
+        return html.unescape(str(raw.get("@value", ""))).strip()
     if isinstance(raw, list):
         return ", ".join(_clean_value(x) for x in raw if x not in (None, "")).strip()
-    return str(raw).strip()
+    return html.unescape(str(raw)).strip()
 
 
 def extract_attrs(entity: Dict[str, Any]) -> Dict[str, str]:
     out: Dict[str, str] = {}
     for raw_key, attr in entity.get("attrs", {}).items():
-        field = raw_key.rstrip("/").split("/")[-1]
+        cleaned = raw_key.replace("=", ".")
+        field = cleaned.rstrip("/#").split("/")[-1].split("#")[-1].strip("'\"")
         value = _clean_value(attr.get("value"))
         if value and value not in JUNK:
             out[FIELD_LABELS.get(field, field)] = value
@@ -76,7 +76,6 @@ async def build_payload(dataset: Dict[str, Any]) -> str:
             if room > 0 and technical:
                 document = f"{document} {_truncate(technical, room)}".strip()
     else:
-        # Fallback per entita' senza titolo/descrizione (POI, TrafficFlow, ...)
         tech_parts = [f"{k}: {v}" for k, v in attrs.items()]
         crawled = await crawl(dataset)
         if crawled:
@@ -84,6 +83,6 @@ async def build_payload(dataset: Dict[str, Any]) -> str:
         document = " | ".join(tech_parts).strip() or "N/A"
         logger.debug(f"[payload] {dataset_id}: nessuna semantica -> fallback sugli attributi")
 
-    document = _truncate(document, MAX_CHARS)
+    #document = _truncate(document, MAX_CHARS)
     logger.debug(f"[payload] {dataset_id}: document {len(document)} char")
     return document

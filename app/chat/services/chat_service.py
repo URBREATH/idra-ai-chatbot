@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from fastapi import HTTPException
 
 from app.chat.dto.models import ChatResponse
+from app.chat.services.chat_followup import is_followup, rewrite_query
 from app.retrieval.embeddings.query_embedder import embed_query
 from app.retrieval.vector_search.searcher import vector_search
 from app.retrieval.reranker.reranker import rerank
@@ -92,6 +93,7 @@ async def generate_answer(
         model: str | None = None,
 ) -> "ChatResponse":
     conversation_id = conversation_id or str(uuid.uuid4())
+    logger.debug("MEMORIA - conversation_id=%s | user_id=%s", conversation_id, user_id)
 
     if model:
         available = await ollama_client.list_models()
@@ -105,7 +107,7 @@ async def generate_answer(
     if user_id:
         try:
             conversation_context = await conversation_services.get_context_for_llm(
-                conversation_id=conversation_id, tenant_id=tenant_id, limit=10,
+                conversation_id=conversation_id, user_id=user_id,tenant_id=tenant_id, limit=10,
             )
         except Exception as e:
             logger.debug(f"Could not load conversation context: {e}")
@@ -143,12 +145,22 @@ async def generate_answer(
             answer = NO_RESULT_INSTRUCTIONS
         return await _respond(answer, [])
 
-    query_embedding = await embed_query(message)
+    search_text = message
+    if conversation_context and is_followup(message):
+        search_text = await rewrite_query(message, conversation_context, model=model)
+
+    nbs = is_nbs_question(message) or is_nbs_question(search_text)  # <-- fix
+    logger.debug("NBS intent: message=%s search=%s -> %s",
+                 is_nbs_question(message), is_nbs_question(search_text), nbs)
+
+    query_embedding = await embed_query(search_text)
     if not query_embedding:
         logger.debug("Empty query embedding; no-result workflow")
         return await _no_result()
 
-    raw_results = vector_search(tenant_id, query_embedding)
+    where = {"is_nbs": True} if nbs else None
+    logger.debug("WHERE passato alla ricerca: %s", where)
+    raw_results = vector_search(tenant_id, query_embedding, where=where)
     documents = (raw_results.get("documents") or [[]])[0]
     metadatas = (raw_results.get("metadatas") or [[]])[0]
     distances = (raw_results.get("distances") or [[]])[0]
@@ -193,8 +205,8 @@ async def generate_answer(
     context, sources = assemble_context(top_documents, top_metadatas)
     logger.debug("CONTEXT PASSATO AL MODELLO:\n%s", context[:2000])
 
-    system = NBS_INSTRUCTIONS if is_nbs_question(message) else SYSTEM_INSTRUCTIONS
-    logger.debug("PROMPT SCELTO: %s", "NBS" if is_nbs_question(message) else "GENERIC")
+    system = NBS_INSTRUCTIONS if nbs else SYSTEM_INSTRUCTIONS
+    logger.debug("PROMPT SCELTO: %s", "NBS" if nbs else "GENERIC")
     prompt = build_prompt(message, context, conversation_context, relaxed=relaxed, system=system)
 
     if model:

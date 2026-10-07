@@ -1,16 +1,14 @@
 import os
 import uuid
-import asyncio
 import logging
-import threading
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-from dataclasses import dataclass, field
-
+from dataclasses import dataclass
 from dotenv import load_dotenv
 
 from .payload_builder import extract_attrs
 from ..config.config import FORMAT_CANON
+from ..instructions.nbs_instructions import is_nbs_resource, extract_problems_section
 from ..mongodb.repositories import (
     get_datasets_since,
     get_deleted_dataset_ids,
@@ -21,7 +19,7 @@ from ..chroma.client import get_tenant_collection, delete_documents_from_collect
 
 load_dotenv()
 
-logging.getLogger("app").setLevel(logging.DEBUG)  # <-- adatta 'app' al package radice
+logging.getLogger("app").setLevel(logging.DEBUG)
 _h = logging.StreamHandler()
 _h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
 logging.getLogger().addHandler(_h)
@@ -63,12 +61,6 @@ def should_index(entity: Dict[str, Any]) -> bool:
 def split_ids(raw: str) -> List[str]:
     return [x.strip() for x in str(raw or "").split(",") if x.strip()]
 
-
-# ============================================================================
-# <<< CHANGE 2: link Dataset <-> Distribution by the id SUFFIX, and carry
-#     format + URL + license onto the Dataset.
-#     Replaces the old build_formats_by_dataset.
-# ============================================================================
 def _suffix(entity_id: str) -> str:
     """Last part of a urn id (after the last ':'). This is what a Dataset and its
     Distribution share, even when their prefixes differ."""
@@ -123,10 +115,6 @@ def build_distribution_info(entities: List[Dict[str, Any]]) -> Dict[str, Dict[st
                    "license": ", ".join(sorted(v["license"]))}
             for dsid, v in info.items()}
 
-
-# ============================================================================
-
-
 @dataclass
 class IngestionStatus:
     running: bool = False
@@ -149,13 +137,15 @@ async def _process_dataset(ds: Dict[str, Any], tenant_id: str,
     from .chunker import chunk_payload
 
     dataset_id = ds.get("_id", {}).get("id") or str(uuid.uuid4())
-    payload = await build_payload(ds)
-    chunks = await chunk_payload(payload, dataset_id)
     attrs = extract_attrs(ds)
+    is_nbs = is_nbs_resource(ds)  # NEW
+    nbs_problems = extract_problems_section(attrs.get("Description", "")) if is_nbs else ""
+    title = attrs.get("Title") or str(ds.get("title", ""))
+    payload = await build_payload(ds)
+    chunks = await chunk_payload(payload, dataset_id, title=title)
 
     entity_type = get_entity_type(ds)
 
-    # <<< CHANGE 2: format + URL + license taken from the linked Distributions
     dinfo = distribution_info.get(dataset_id, {})
     formats = dinfo.get("formats") or clean_format(attrs.get("Format", ""))
     url = attrs.get("URL") or attrs.get("AccessURL") or attrs.get("LandingPage") or dinfo.get("url", "")
@@ -174,11 +164,13 @@ async def _process_dataset(ds: Dict[str, Any], tenant_id: str,
             "theme": attrs.get("Theme"),
             "keywords": attrs.get("Keywords"),
             "publisher": attrs.get("Publisher") or ds.get("publisher"),
-            "url": url,  # <<< CHANGE 2
-            "format": formats,  # list
-            "license": license_str,  # <<< CHANGE 2
+            "url": url,
+            "format": formats,
+            "license": license_str,
             "released": attrs.get("Published"),
             "distribution_ids": attrs.get("DistributionIds"),
+            "is_nbs": is_nbs,  # NEW
+            "nbs_problems": nbs_problems,  # NEW
         }
         metadata = {k: v for k, v in candidate_metadata.items() if v not in (None, "", [])}
         results.append({
@@ -231,7 +223,6 @@ async def _run_incremental(tenant_id: str, full_reindex: bool = False) -> Dict[s
         await _delete_from_collection(collection, deleted_ids)
         logger.debug(f"[ingest] deleted {len(deleted_ids)} removed at source")
 
-    # <<< CHANGE 2: lookup built from ALL entities (Distributions included)
     distribution_info = build_distribution_info(new_datasets)
     logger.debug(f"[ingest] distribution info for {len(distribution_info)} datasets")
 
