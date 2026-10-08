@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+import unicodedata
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class SourceReference(BaseModel):
@@ -12,6 +14,11 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=5000)
     conversationId: str | None = None
     model: str | None = None
+
+    @field_validator("message")
+    @classmethod
+    def normalize_message(cls, value: str) -> str:
+        return unicodedata.normalize("NFC", value)
 
 
 class ChatResponse(BaseModel):

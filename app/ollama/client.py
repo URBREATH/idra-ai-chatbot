@@ -1,13 +1,18 @@
 import os
+import logging
 import httpx
 from dotenv import load_dotenv
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "localhost")
 OLLAMA_PORT = int(os.getenv("OLLAMA_PORT", "11434"))
 _keep_alive = os.getenv("OLLAMA_KEEP_ALIVE", "-1")
 OLLAMA_KEEP_ALIVE: str | int = int(_keep_alive) if _keep_alive.lstrip("-").isdigit() else _keep_alive
+OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "16384"))
+OLLAMA_NUM_PREDICT = int(os.getenv("OLLAMA_NUM_PREDICT", "4096"))
 BASE_URL = f"http://{OLLAMA_HOST}:{OLLAMA_PORT}"
 
 async def list_models() -> list[str]:
@@ -42,12 +47,21 @@ async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MO
                 "messages": messages,
                 "stream": False,
                 "keep_alive": OLLAMA_KEEP_ALIVE,
-                "options": {"temperature": temperature, "num_ctx": 8192, "num_predict": 1024}
+                "options": {
+                    "temperature": temperature,
+                    "num_ctx": OLLAMA_NUM_CTX,
+                    "num_predict": OLLAMA_NUM_PREDICT,
+                }
             },
             timeout=httpx.Timeout(connect=10.0, read=1200.0, write=30.0, pool=30.0),
         )
         resp.raise_for_status()
         data = resp.json()
+        if data.get("done_reason") == "length":
+            logger.warning(
+                "Ollama response reached the configured token limit (num_predict=%d)",
+                OLLAMA_NUM_PREDICT,
+            )
         return data.get("message", {}).get("content", "")
 
 

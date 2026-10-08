@@ -102,3 +102,26 @@ async def test_generate_completion_sends_system_message_before_user_prompt():
             {"role": "user", "content": "pregunta"},
         ]
         assert mock_client.post.call_args.kwargs["json"]["keep_alive"] == -1
+        assert mock_client.post.call_args.kwargs["json"]["options"]["num_ctx"] == 16384
+        assert mock_client.post.call_args.kwargs["json"]["options"]["num_predict"] == 4096
+
+
+@pytest.mark.asyncio
+async def test_generate_completion_logs_when_response_reaches_token_limit(caplog):
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "message": {"content": "Partial response"},
+        "done_reason": "length",
+    }
+    mock_response.raise_for_status = MagicMock()
+
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.post.return_value = mock_response
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+
+        from app.ollama.client import generate_completion
+        result = await generate_completion("prompt")
+
+    assert result == "Partial response"
+    assert "reached the configured token limit" in caplog.text

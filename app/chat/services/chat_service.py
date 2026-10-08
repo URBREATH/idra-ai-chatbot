@@ -1,3 +1,5 @@
+import asyncio
+import json
 import os
 import re
 import uuid
@@ -5,6 +7,7 @@ import logging
 
 from dotenv import load_dotenv
 from fastapi import HTTPException
+from lingua import LanguageDetectorBuilder
 
 from app.chat.dto.models import ChatResponse
 from app.retrieval.embeddings.query_embedder import embed_query
@@ -32,6 +35,11 @@ DISTANCE_THRESHOLD_STEP = float(os.getenv("DISTANCE_THRESHOLD_STEP", "0.10"))
 DISTANCE_THRESHOLD_MAX = float(os.getenv("DISTANCE_THRESHOLD_MAX", "0.75"))
 LOG_TOP_FOUND = int(os.getenv("LOG_TOP_FOUND", 100))
 MAX_N_RESULTS = int(os.getenv("MAX_N_RESULTS", 100))
+LANGUAGE_CONFIDENCE_THRESHOLD = float(os.getenv("LANGUAGE_CONFIDENCE_THRESHOLD", "0.70"))
+LANGUAGE_CONFIDENCE_MARGIN = float(os.getenv("LANGUAGE_CONFIDENCE_MARGIN", "0.20"))
+LANGUAGE_DETECTION_TIMEOUT = float(os.getenv("LANGUAGE_DETECTION_TIMEOUT", "10.0"))
+
+_LANGUAGE_DETECTOR = LanguageDetectorBuilder.from_all_languages().build()
 
 _N_RESULTS_ANALYSIS_PROMPT = (
     "You are a query analyser. Given the user query below, estimate how many "
@@ -42,16 +50,21 @@ _N_RESULTS_ANALYSIS_PROMPT = (
     "- If the query asks for ALL, every, complete list, catalogue, or comprehensive results, "
     f"return a high number (51-{MAX_N_RESULTS}).\n"
     "\n"
-    "Query: \"{message}\"\n"
+    "Query as a JSON string: {message}\n"
     "Integer:"
 )
 
 
-async def _determine_n_results(message: str) -> int:
+async def _determine_n_results(message: str, model: str | None = None) -> int:
     """Use the LLM to estimate the appropriate number of search results for the query."""
     try:
-        prompt = _N_RESULTS_ANALYSIS_PROMPT.format(message=message)
-        raw = await ollama_client.generate_completion(prompt, temperature=0.0)
+        prompt = _N_RESULTS_ANALYSIS_PROMPT.format(
+            message=json.dumps(message, ensure_ascii=False),
+        )
+        kwargs = {"temperature": 0.0}
+        if model:
+            kwargs["model"] = model
+        raw = await ollama_client.generate_completion(prompt, **kwargs)
         number = int(raw.strip())
         clamped = max(1, min(number, MAX_N_RESULTS))
         logger.debug("LLM determined n_results=%d (raw=%r, clamped to [1, %d])", clamped, raw.strip(), MAX_N_RESULTS)
@@ -65,18 +78,40 @@ _LANGUAGE_DETECTION_PROMPT = (
     "Identify the language of the user message below. Return ONLY its lowercase "
     "ISO 639-1 two-letter code, with no punctuation or explanation. Detect the "
     "language from the message itself, not from the topic or named entities.\n\n"
-    "User message:\n<message>{message}</message>\n\nLanguage code:"
+    "User message as a JSON string:\n{message}\n\nLanguage code:"
 )
 
 
-async def _detect_language(text: str, model: str | None = None) -> str | None:
+def _detect_language_locally(text: str) -> tuple[str | None, float, float]:
+    """Return a reliable local detection plus confidence and candidate margin."""
+    confidence_values = _LANGUAGE_DETECTOR.compute_language_confidence_values(text)
+    if not confidence_values:
+        return None, 0.0, 0.0
+
+    best = confidence_values[0]
+    second_confidence = confidence_values[1].value if len(confidence_values) > 1 else 0.0
+    margin = best.value - second_confidence
+    iso_code = best.language.iso_code_639_1
+    code = iso_code.name.lower() if iso_code else None
+    logger.debug(
+        "Local language detection: code=%s confidence=%.3f margin=%.3f",
+        code, best.value, margin,
+    )
+    if best.value >= LANGUAGE_CONFIDENCE_THRESHOLD or margin >= LANGUAGE_CONFIDENCE_MARGIN:
+        return code, best.value, margin
+    return None, best.value, margin
+
+
+async def _detect_language_with_llm(text: str, model: str | None = None) -> str | None:
     """Ask the LLM for the message language as an ISO 639-1 code."""
     try:
         kwargs = {"temperature": 0.0}
         if model:
             kwargs["model"] = model
         raw = await ollama_client.generate_completion(
-            _LANGUAGE_DETECTION_PROMPT.format(message=text),
+            _LANGUAGE_DETECTION_PROMPT.format(
+                message=json.dumps(text, ensure_ascii=False),
+            ),
             **kwargs,
         )
         code = raw.strip().lower()
@@ -86,6 +121,35 @@ async def _detect_language(text: str, model: str | None = None) -> str | None:
     except Exception as e:
         logger.debug("Could not detect query language via LLM: %s", e)
     return None
+
+
+async def _detect_language(text: str, model: str | None = None) -> str | None:
+    if not any(character.isalpha() for character in text):
+        logger.debug("Skipping language detection for input without letters")
+        return None
+
+    try:
+        code, confidence, margin = _detect_language_locally(text)
+    except (RuntimeError, UnicodeError, ValueError) as e:
+        logger.debug("Local language detection failed: %s", e)
+        code, confidence, margin = None, 0.0, 0.0
+    if code:
+        return code
+    logger.debug(
+        "Local language detection is ambiguous (confidence=%.3f, margin=%.3f); using LLM fallback",
+        confidence, margin,
+    )
+    try:
+        return await asyncio.wait_for(
+            _detect_language_with_llm(text, model=model),
+            timeout=LANGUAGE_DETECTION_TIMEOUT,
+        )
+    except TimeoutError:
+        logger.debug(
+            "Language detection LLM timed out after %.1f seconds",
+            LANGUAGE_DETECTION_TIMEOUT,
+        )
+        return None
 
 
 def _language_directive(lang_code: str | None) -> str:
@@ -160,6 +224,8 @@ async def generate_answer(
                 status_code=400,
                 detail=f"Model '{model}' not found. Valid models are: {available}",
             )
+    effective_model = model or os.getenv("OLLAMA_LLM_MODEL", "mistral-nemo")
+    logger.debug("Using LLM model for chat workflow: %s", effective_model)
 
     conversation_context = ""
     if user_id:
@@ -211,7 +277,7 @@ async def generate_answer(
         logger.debug("Empty query embedding; no-result workflow")
         return await _no_result()
 
-    n_results = await _determine_n_results(message)
+    n_results = await _determine_n_results(message, model=model)
     raw_results = vector_search(tenant_id, query_embedding, n_results=n_results)
     documents = (raw_results.get("documents") or [[]])[0]
     metadatas = (raw_results.get("metadatas") or [[]])[0]

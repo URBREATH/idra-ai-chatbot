@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Idra Open Data Chat</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #e9f1eb;
+      --muted: #94a69d;
+      --paper: #0d1714;
+      --panel: #14231e;
+      --panel-2: #192c25;
+      --line: #2c463b;
+      --accent: #e9b44c;
+      --accent-2: #65c7a0;
+      --danger: #ff8c7d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(101, 199, 160, .12), transparent 26rem),
+        linear-gradient(120deg, #0a1210, var(--paper));
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 14px; }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      border: 1px solid var(--accent-2);
+      border-radius: 50% 50% 48% 52% / 58% 58% 42% 42%;
+      color: var(--accent-2);
+      font-family: Georgia, serif;
+      font-size: 25px;
+      transform: rotate(8deg);
+    }
+
+    h1 {
+      margin: 0;
+      font: 600 clamp(24px, 4vw, 36px)/1 Georgia, "Times New Roman", serif;
+      letter-spacing: -.03em;
+    }
+
+    .eyebrow {
+      margin: 0 0 5px;
+      color: var(--accent);
+      font: 700 11px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    .health {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .health-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--muted);
+      box-shadow: 0 0 0 4px rgba(148, 166, 157, .1);
+    }
+
+    .health[data-state="up"] .health-dot { background: var(--accent-2); }
+    .health[data-state="down"] .health-dot { background: var(--danger); }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+      min-height: calc(100vh - 128px);
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(20, 35, 30, .86);
+      box-shadow: 0 28px 80px rgba(0, 0, 0, .28);
+      backdrop-filter: blur(18px);
+    }
+
+    aside {
+      padding: 24px;
+      border-right: 1px solid var(--line);
+      background: rgba(10, 20, 16, .46);
+    }
+
+    .settings-title {
+      margin: 0 0 20px;
+      font: 600 19px/1.2 Georgia, serif;
+    }
+
+    label {
+      display: block;
+      margin: 0 0 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .field { margin-bottom: 18px; }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      outline: none;
+      color: var(--ink);
+      background: #0d1915;
+      transition: border-color .18s, box-shadow .18s;
+    }
+
+    input, select {
+      height: 43px;
+      padding: 0 12px;
+      border-radius: 10px;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent-2);
+      box-shadow: 0 0 0 3px rgba(101, 199, 160, .12);
+    }
+
+    .hint {
+      margin: 7px 0 0;
+      color: #71867c;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .secondary {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .secondary:hover { color: var(--ink); border-color: #4c695d; }
+
+    .chat {
+      display: grid;
+      grid-template-rows: minmax(340px, 1fr) auto;
+      min-width: 0;
+    }
+
+    .messages {
+      overflow-y: auto;
+      padding: 30px clamp(20px, 5vw, 52px);
+    }
+
+    .empty {
+      display: grid;
+      place-content: center;
+      min-height: 100%;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .empty strong {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--ink);
+      font: 500 clamp(26px, 4vw, 42px)/1.08 Georgia, serif;
+    }
+
+    .empty p { max-width: 520px; margin: 0; line-height: 1.65; }
+
+    .message { margin: 0 0 24px; animation: enter .25s ease-out; }
+    .message.user { margin-left: min(16%, 120px); }
+    .message.assistant { margin-right: min(8%, 60px); }
+
+    .role {
+      margin-bottom: 7px;
+      color: var(--accent-2);
+      font: 700 11px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .message.user .role { color: var(--accent); }
+
+    .bubble {
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 4px 16px 16px 16px;
+      background: var(--panel-2);
+      line-height: 1.65;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .message.user .bubble {
+      border-radius: 16px 4px 16px 16px;
+      background: #243326;
+    }
+
+    .message.error .bubble { border-color: rgba(255, 140, 125, .5); color: var(--danger); }
+
+    .sources {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .source {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--muted);
+      background: rgba(8, 17, 14, .5);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .source a { color: var(--accent-2); text-decoration: none; }
+    .source a:hover { text-decoration: underline; }
+
+    form {
+      padding: 18px clamp(18px, 4vw, 36px) 22px;
+      border-top: 1px solid var(--line);
+      background: rgba(9, 18, 15, .7);
+    }
+
+    .composer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    textarea {
+      min-height: 92px;
+      max-height: 240px;
+      resize: vertical;
+      padding: 14px;
+      border-radius: 14px;
+      line-height: 1.5;
+    }
+
+    .send {
+      min-width: 112px;
+      height: 48px;
+      border: 0;
+      border-radius: 12px;
+      color: #172015;
+      background: var(--accent);
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .15s, filter .15s;
+    }
+
+    .send:hover { transform: translateY(-1px); filter: brightness(1.06); }
+    .send:disabled { cursor: wait; opacity: .55; transform: none; }
+
+    .composer-hint { margin: 8px 2px 0; color: #71867c; font-size: 11px; }
+
+    @keyframes enter {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 760px) {
+      .shell { width: min(100% - 20px, 680px); padding: 16px 0; }
+      header { margin-bottom: 16px; }
+      .health span:last-child { display: none; }
+      main { grid-template-columns: 1fr; border-radius: 16px; }
+      aside { border-right: 0; border-bottom: 1px solid var(--line); }
+      .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .field { margin-bottom: 0; }
+      .field:first-child { grid-column: 1 / -1; }
+      .secondary { margin-top: 14px; }
+      .chat { min-height: 620px; }
+      .messages { padding: 24px 16px; }
+      .message.user, .message.assistant { margin-left: 0; margin-right: 0; }
+      .composer { grid-template-columns: 1fr; }
+      .send { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand">
+        <div class="mark" aria-hidden="true">I</div>
+        <div>
+          <p class="eyebrow">European Open Data</p>
+          <h1>Idra Chat</h1>
+        </div>
+      </div>
+      <div class="health" id="health" data-state="loading">
+        <span class="health-dot"></span>
+        <span id="healthText">Verifica servizi...</span>
+      </div>
+    </header>
+
+    <main>
+      <aside>
+        <h2 class="settings-title">Connessione</h2>
+        <div class="settings-grid">
+          <div class="field">
+            <label for="token">Admin token</label>
+            <input id="token" type="password" autocomplete="off" placeholder="Incolla ADMIN_TOKEN">
+            <p class="hint">Conservato solo per questa sessione del browser.</p>
+          </div>
+          <div class="field">
+            <label for="tenant">Tenant</label>
+            <input id="tenant" value="default-tenant">
+          </div>
+          <div class="field">
+            <label for="model">Modello</label>
+            <select id="model">
+              <option value="">Predefinito del server</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="conversation">Conversazione</label>
+            <input id="conversation">
+          </div>
+        </div>
+        <button class="secondary" id="newConversation" type="button">Nuova conversazione</button>
+      </aside>
+
+      <section class="chat" aria-label="Chat">
+        <div class="messages" id="messages" aria-live="polite">
+          <div class="empty" id="emptyState">
+            <div>
+              <strong>Interroga il catalogo.</strong>
+              <p>Scrivi liberamente: accenti, apostrofi, emoji e righe multiple vengono inviati come JSON valido dal browser.</p>
+            </div>
+          </div>
+        </div>
+
+        <form id="chatForm">
+          <div class="composer">
+            <textarea id="prompt" required maxlength="5000" placeholder="Es. In quale città si trova la qualità dell'aria più alta?"></textarea>
+            <button class="send" id="sendButton" type="submit">Invia</button>
+          </div>
+          <p class="composer-hint">Ctrl + Invio per inviare. Invio semplice aggiunge una nuova riga.</p>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const elements = {
+      form: document.querySelector("#chatForm"),
+      prompt: document.querySelector("#prompt"),
+      token: document.querySelector("#token"),
+      tenant: document.querySelector("#tenant"),
+      model: document.querySelector("#model"),
+      conversation: document.querySelector("#conversation"),
+      messages: document.querySelector("#messages"),
+      empty: document.querySelector("#emptyState"),
+      send: document.querySelector("#sendButton"),
+      health: document.querySelector("#health"),
+      healthText: document.querySelector("#healthText"),
+      newConversation: document.querySelector("#newConversation")
+    };
+
+    const createConversationId = () =>
+      globalThis.crypto?.randomUUID?.() ?? `chat-${Date.now()}`;
+
+    elements.token.value = sessionStorage.getItem("idra-token") ?? "";
+    elements.tenant.value = localStorage.getItem("idra-tenant") ?? "default-tenant";
+    elements.conversation.value = localStorage.getItem("idra-conversation") ?? createConversationId();
+
+    function addMessage(role, content, sources = [], isError = false) {
+      elements.empty?.remove();
+
+      const article = document.createElement("article");
+      article.className = `message ${role}${isError ? " error" : ""}`;
+
+      const roleLabel = document.createElement("div");
+      roleLabel.className = "role";
+      roleLabel.textContent = role === "user" ? "Tu" : isError ? "Errore" : "Idra";
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = content;
+
+      article.append(roleLabel, bubble);
+
+      if (sources.length) {
+        const sourceGrid = document.createElement("div");
+        sourceGrid.className = "sources";
+        for (const source of sources) {
+          const card = document.createElement("div");
+          card.className = "source";
+          const title = document.createElement(source.url ? "a" : "strong");
+          title.textContent = source.title || source.datasetId || "Risorsa";
+          if (source.url) {
+            title.href = source.url;
+            title.target = "_blank";
+            title.rel = "noopener noreferrer";
+          }
+          card.append(title);
+          if (source.publisher) {
+            const publisher = document.createElement("div");
+            publisher.textContent = source.publisher;
+            card.append(publisher);
+          }
+          sourceGrid.append(card);
+        }
+        article.append(sourceGrid);
+      }
+
+      elements.messages.append(article);
+      elements.messages.scrollTop = elements.messages.scrollHeight;
+    }
+
+    async function parseError(response) {
+      try {
+        const body = await response.json();
+        if (typeof body.detail === "string") return body.detail;
+        if (Array.isArray(body.detail)) return body.detail.map(item => item.msg).join("; ");
+        return JSON.stringify(body);
+      } catch {
+        return `${response.status} ${response.statusText}`;
+      }
+    }
+
+    async function sendMessage(event) {
+      event.preventDefault();
+      const message = elements.prompt.value;
+      const token = elements.token.value.trim();
+      const tenant = elements.tenant.value.trim() || "default-tenant";
+      const conversationId = elements.conversation.value.trim() || createConversationId();
+
+      if (!message.trim()) return;
+      if (!token) {
+        addMessage("assistant", "Inserisci l'ADMIN_TOKEN nel pannello di connessione.", [], true);
+        elements.token.focus();
+        return;
+      }
+
+      sessionStorage.setItem("idra-token", token);
+      localStorage.setItem("idra-tenant", tenant);
+      localStorage.setItem("idra-conversation", conversationId);
+      elements.conversation.value = conversationId;
+
+      const payload = { message, conversationId };
+      if (elements.model.value) payload.model = elements.model.value;
+
+      addMessage("user", message);
+      elements.prompt.value = "";
+      elements.send.disabled = true;
+      elements.send.textContent = "Attendi...";
+
+      try {
+        const response = await fetch("/chat", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "X-Tenant-Id": tenant,
+            "Content-Type": "application/json; charset=utf-8"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error(await parseError(response));
+        const result = await response.json();
+        addMessage("assistant", result.answer, result.sources ?? []);
+        if (result.conversationId) {
+          elements.conversation.value = result.conversationId;
+          localStorage.setItem("idra-conversation", result.conversationId);
+        }
+      } catch (error) {
+        addMessage("assistant", error.message || "Errore di connessione al server.", [], true);
+      } finally {
+        elements.send.disabled = false;
+        elements.send.textContent = "Invia";
+        elements.prompt.focus();
+      }
+    }
+
+    async function loadModels() {
+      try {
+        const response = await fetch("/models");
+        if (!response.ok) return;
+        const { models = [] } = await response.json();
+        const preferred = localStorage.getItem("idra-model") ?? "mixtral:latest";
+        for (const model of models) {
+          const option = document.createElement("option");
+          option.value = model;
+          option.textContent = model;
+          option.selected = model === preferred;
+          elements.model.append(option);
+        }
+      } catch { /* The default server model remains available. */ }
+    }
+
+    async function checkHealth() {
+      try {
+        const response = await fetch("/health");
+        const health = await response.json();
+        const up = health.ollama === "UP" && health.chroma === "UP" && health.mongo === "UP";
+        elements.health.dataset.state = up ? "up" : "down";
+        elements.healthText.textContent = up ? "Servizi operativi" : "Servizi non disponibili";
+      } catch {
+        elements.health.dataset.state = "down";
+        elements.healthText.textContent = "Server non raggiungibile";
+      }
+    }
+
+    elements.form.addEventListener("submit", sendMessage);
+    elements.prompt.addEventListener("keydown", event => {
+      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        elements.form.requestSubmit();
+      }
+    });
+    elements.token.addEventListener("change", () => sessionStorage.setItem("idra-token", elements.token.value.trim()));
+    elements.model.addEventListener("change", () => localStorage.setItem("idra-model", elements.model.value));
+    elements.newConversation.addEventListener("click", () => {
+      const id = createConversationId();
+      elements.conversation.value = id;
+      localStorage.setItem("idra-conversation", id);
+      elements.messages.replaceChildren();
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.innerHTML = "<div><strong>Nuova conversazione.</strong><p>Il contesto precedente non verrà incluso nelle prossime risposte.</p></div>";
+      elements.messages.append(empty);
+      elements.prompt.focus();
+    });
+
+    loadModels();
+    checkHealth();
+    elements.prompt.focus();
+  </script>
+</body>
+</html>
