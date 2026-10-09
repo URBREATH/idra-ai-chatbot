@@ -212,6 +212,13 @@ hits ChromaDB's `/api/v2/heartbeat`, and queries Ollama's `/api/tags`. If every 
 it returns `status: "UP"` with HTTP `200`; if any is unreachable it returns `status: "DEGRADED"`
 with HTTP `503`, so monitors and orchestrators can react to the status code.
 
-## License
+# Dependencies
 
-*(Add the project's license here — e.g. Apache-2.0 or EUPL, per the URBREATH project's conventions.)*
+| | |
+| --- | --- |
+| **Dependencies** | MongoDB, ChromaDB, Ollama, Python (or Anaconda), Docker, Orion, NGSI Broker  |
+| **Contacts** | marco.dauria@eng.it |
+
+
+## License
+This project is distributed under **AGPL-3** license.
