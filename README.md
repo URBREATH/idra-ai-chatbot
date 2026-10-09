@@ -221,4 +221,4 @@ with HTTP `503`, so monitors and orchestrators can react to the status code.
 
 
 ## License
-This project is distributed under **AGPL-3** license.
+This project is distributed under **Apache-2.0** license.
