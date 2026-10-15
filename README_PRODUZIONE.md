@@ -184,10 +184,7 @@ curl http://localhost:3000/health
 
 ```bash
 # Endpoint (richiede ADMIN_TOKEN, NON un JWT - vedi app/auth.py)
-curl -X POST http://localhost:3000/admin/ingestion/run \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"fullReindex": false}'
+curl -X POST http://localhost:3000/admin/ingestion/run -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d '{"fullReindex": false}'
 ```
 
 > Il percorso reale è `/admin/ingestion/run` (nessun prefisso `/api/v1`).

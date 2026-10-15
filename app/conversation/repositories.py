@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from app.mongodb.client import get_database
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
-from bson import ObjectId
 import logging
 
 load_dotenv()

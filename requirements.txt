@@ -12,3 +12,4 @@ PyJWT>=2.8.0,<3
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
 sentence-transformers
+lingua-language-detector==2.2.0

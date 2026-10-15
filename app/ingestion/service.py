@@ -6,6 +6,8 @@ from datetime import datetime
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
+from dotenv import load_dotenv
+
 from .payload_builder import extract_attrs
 from ..config.config import FORMAT_CANON
 from ..instructions.nbs_instructions import is_nbs_resource, extract_problems_section
@@ -19,10 +21,14 @@ from ..chroma.client import get_tenant_collection, delete_documents_from_collect
 
 load_dotenv()
 
-logging.getLogger("app").setLevel(logging.DEBUG)
-_h = logging.StreamHandler()
-_h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
-logging.getLogger().addHandler(_h)
+# LOGGING: abilita DEBUG per tutti i moduli app.* (senza attivare il debug delle
+# librerie di terze parti) e garantisci un handler. NON usiamo basicConfig, che
+# sotto Uvicorn verrebbe ignorato.
+logging.getLogger("app").setLevel(logging.DEBUG)  # <-- adatta 'app' al package radice
+if not logging.getLogger().handlers:
+    _h = logging.StreamHandler()
+    _h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    logging.getLogger().addHandler(_h)
 logger = logging.getLogger(__name__)
 
 BATCH_SIZE = int(os.getenv("INGESTION_BATCH_SIZE", 500))
