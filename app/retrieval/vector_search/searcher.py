@@ -11,7 +11,7 @@ DEFAULT_N_RESULTS = int(os.getenv("DEFAULT_N_RESULTS", 10))
 def vector_search(
     tenant_id: str,
     query_embedding: list[float],
-    n_results: int = DEFAULT_N_RESULTS,
+    n_results: int,
     where: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run a similarity search against the tenant's ChromaDB collection.
