@@ -13,6 +13,7 @@ class SourceReference(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=5000)
     conversationId: str | None = None
+    userId: str | None = None
     model: str | None = None
 
     @field_validator("message")
@@ -24,6 +25,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     sources: list[SourceReference]
+    userId: str | None = None
     conversationId: str | None = None
 
 

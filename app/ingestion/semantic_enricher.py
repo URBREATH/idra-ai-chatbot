@@ -10,7 +10,7 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-MODEL = os.getenv("OLLAMA_LLM_MODEL", "qwen2.5:7b")
+MODEL = os.getenv("OLLAMA_ENRICHMENT_MODEL", "mistral:7b")
 TEMPERATURE = float(os.getenv("TEMPERATURE", 0.1))
 MAX_TERMS = int(os.getenv("MAX_TERMS", 20))
 

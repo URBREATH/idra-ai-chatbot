@@ -1,7 +1,9 @@
+import os
 from typing import Any
 
 _CROSS_ENCODER = None
 _CROSS_ENCODER_LOADED = False
+OLLAMA_RERANKER_MODEL= os.getenv("OLLAMA_RERANKER_MODEL", "mxbai-rerank-v2")
 
 
 def get_cross_encoder() -> Any | None:
@@ -18,7 +20,7 @@ def get_cross_encoder() -> Any | None:
     try:
         from sentence_transformers import CrossEncoder  # type: ignore
 
-        _CROSS_ENCODER = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+        _CROSS_ENCODER = CrossEncoder(OLLAMA_RERANKER_MODEL)
     except Exception:
         _CROSS_ENCODER = None
     return _CROSS_ENCODER

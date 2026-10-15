@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Idra Chatbot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,650&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ---------- dark theme: Pure Black & Bordeaux ---------- */
+:root {
+    --bg: #000000;
+    --surface: rgba(25, 25, 25, 0.8);
+    --surface-2: rgba(35, 35, 35, 0.9);
+    --border: rgba(255, 255, 255, 0.12);
+    --border-strong: rgba(255, 255, 255, 0.25);
+    --text: #f3f4f6;
+    --muted: #9ca3af;
+    --faint: #6b7280;
+
+    /* Nuovo Colore Singolo: Bordeaux/Rubino Luminoso (#e11d48) */
+    --accent: #e11d48;
+    --accent-glow: rgba(225, 29, 72, 0.3);
+    --accent-ink: #ffffff;
+    --accent-soft: rgba(225, 29, 72, 0.15);
+
+    --amber: #fbbf24;
+    --amber-soft: rgba(251, 191, 36, 0.15);
+    --danger: #ef4444;
+    --danger-soft: rgba(239, 68, 68, 0.15);
+    --ok: #22c55e;
+
+    --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    --font-ui: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+
+  /* ---------- light theme: Clean & Bordeaux ---------- */
+  html[data-theme="light"] {
+    --bg: #f9fafb;
+    --surface: #ffffff;
+    --surface-2: #f3f4f6;
+    --border: rgba(0, 0, 0, 0.1);
+    --border-strong: rgba(0, 0, 0, 0.2);
+    --text: #111827;
+    --muted: #4b5563;
+    --faint: #9ca3af;
+    --accent: #be123c;
+    --accent-glow: rgba(190, 18, 60, 0.2);
+    --accent-ink: #ffffff;
+    --accent-soft: rgba(190, 18, 60, 0.08);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .app { height: 100vh; display: flex; overflow: hidden; }
+
+  /* =================== sidebar =================== */
+  .sidebar {
+    width: 280px; flex: 0 0 280px; display: flex; flex-direction: column;
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 18px 18px 14px; }
+  .logo {
+    width: 36px; height: 36px; border-radius: 12px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    display: flex; align-items: center; justify-content: center; flex: 0 0 36px;
+  }
+  .brand-name { font-family: var(--font-display); font-weight: 650; font-size: 18px; letter-spacing: -.01em; }
+  .brand-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .s-close { margin-left: auto; display: none; }
+
+  .newchat {
+    margin: 4px 14px 16px; display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border-strong);
+    background: var(--surface); cursor: pointer; font-weight: 600; font-size: 13px;
+    transition: all .2s;
+  }
+  .newchat:hover {
+    border-color: var(--accent); background: var(--accent-soft); color: var(--accent);
+  }
+
+  .s-label { padding: 0 18px 6px; font-size: 12px; color: var(--faint); font-weight: 500; }
+  .history { flex: 1; overflow-y: auto; padding: 0 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+
+  .h-item { position: relative; display: flex; align-items: stretch; border-radius: 12px; transition: background 0.2s; }
+  .h-item:hover { background: var(--surface-2); }
+  .h-item.active { background: var(--surface-2); border-left: 3px solid var(--accent); }
+
+  .h-main { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 10px; }
+  .h-open {
+    text-align: left; background: none; border: none; cursor: pointer;
+    padding: 0; margin-bottom: 6px;
+  }
+  .h-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .h-sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+  /* ---- Classificazione Chat ---- */
+  .h-rating { display: flex; gap: 4px; flex-wrap: wrap; }
+  .rate-btn {
+    flex: 1; font-size: 10px; font-weight: 600; padding: 4px 0; border-radius: 6px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+    cursor: pointer; transition: all 0.2s; text-align: center;
+  }
+  .rate-btn:hover { background: var(--surface-2); }
+  .rate-btn.active[data-val="ok"] { background: rgba(34, 197, 94, 0.15); border-color: var(--ok); color: var(--ok); }
+  .rate-btn.active[data-val="imprecise"] { background: rgba(251, 191, 36, 0.15); border-color: var(--amber); color: var(--amber); }
+  .rate-btn.active[data-val="wrong"] { background: rgba(239, 68, 68, 0.15); border-color: var(--danger); color: var(--danger); }
+
+  .h-del {
+    background: none; border: none; color: var(--faint); cursor: pointer;
+    padding: 0 12px; font-size: 14px; opacity: 0; border-radius: 0 12px 12px 0;
+  }
+  .h-item:hover .h-del, .h-del:focus-visible { opacity: 1; }
+  .h-del:hover { color: var(--danger); }
+  .h-empty { font-size: 12.5px; color: var(--muted); padding: 8px 8px; line-height: 1.55; }
+  .s-foot { padding: 12px 18px 16px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--faint); }
+
+  /* =================== main =================== */
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+  .topbar { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--bg); z-index: 5; }
+
+  .title-wrap { display: flex; align-items: center; gap: 8px; flex: 1; }
+  .topbar h1 { font-family: var(--font-display); font-weight: 500; font-size: 16px; margin: 0; color: var(--text); }
+  #titleInput {
+    font-family: var(--font-display); font-size: 16px; font-weight: 500; background: var(--surface-2);
+    border: 1px solid var(--accent); color: var(--text); border-radius: 6px; padding: 4px 10px; width: 60%;
+  }
+
+  .spacer { flex: 1; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+    padding: 4px 10px; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: 0 0 7px; }
+  .dot.ok { background: var(--ok); }
+  .dot.bad { background: var(--danger); }
+  .iconbtn {
+    width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px; border: 1px solid transparent; background: transparent; cursor: pointer; font-size: 15px;
+    transition: all 0.2s;
+  }
+  .iconbtn:hover { background: var(--surface-2); border-color: var(--border-strong); }
+  .menubtn { display: none; }
+
+  /* =================== connection settings =================== */
+  .settings { border-bottom: 1px solid var(--border); background: var(--surface); z-index: 4; }
+  .settings summary {
+    list-style: none; display: flex; align-items: center; gap: 8px; padding: 12px 20px; cursor: pointer;
+    font-size: 12.5px; color: var(--muted); transition: color 0.2s;
+  }
+  .settings summary::-webkit-details-marker { display: none; }
+  .settings summary .chev { transition: transform .2s; }
+  .settings[open] summary .chev { transform: rotate(90deg); color: var(--accent); }
+  .settings summary:hover { color: var(--text); }
+  .settings .body { padding: 4px 20px 20px; max-width: 900px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 500; }
+  .settings input, .settings select {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px;
+    background: var(--bg); color: var(--text); transition: all 0.2s;
+  }
+  .settings input:focus, .settings select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); outline: none; }
+  .hint { font-size: 12px; color: var(--faint); margin-top: 14px; line-height: 1.5; }
+
+  /* =================== conversation =================== */
+  .chat { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+  .thread { max-width: 820px; margin: 0 auto; padding: 28px 24px 120px; display: flex; flex-direction: column; gap: 24px; }
+
+  .empty { padding: 9vh 0 20px; }
+  .empty h2 {
+    font-family: var(--font-display); font-weight: 650; font-size: clamp(28px, 4.2vw, 40px);
+    line-height: 1.08; letter-spacing: -.025em; margin: 0 0 12px; color: var(--text);
+  }
+  .empty p { color: var(--muted); font-size: 15px; line-height: 1.6; margin: 0 0 28px; max-width: 52ch; }
+
+  .suggest { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .chip {
+    text-align: left; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border-strong);
+    background: var(--surface); cursor: pointer; font-size: 13px; line-height: 1.45;
+    transition: all .2s;
+  }
+  .chip:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); transform: translateY(-2px); }
+
+  .msg { display: flex; gap: 16px; animation: slideUpFade .3s ease-out forwards; }
+  @keyframes slideUpFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  .msg.user { justify-content: flex-end; }
+  .user .bubble {
+    max-width: 78%;
+    background: var(--accent);
+    color: var(--accent-ink);
+    padding: 12px 18px; border-radius: 20px 20px 4px 20px;
+    font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word;
+  }
+
+  .bot { align-items: flex-start; }
+  .avatar {
+    width: 32px; height: 32px; flex: 0 0 32px; border-radius: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong); color: var(--accent);
+    display: flex; align-items: center; justify-content: center; margin-top: 2px;
+  }
+  .bot-body { flex: 1; min-width: 0; }
+  .bot .text {
+    font-size: 14.5px; line-height: 1.65; white-space: pre-wrap; word-wrap: break-word;
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 14px 18px; border-radius: 4px 20px 20px 20px;
+  }
+  .bot .text a { color: var(--accent); text-underline-offset: 2px; }
+  .bot.error .text { color: var(--danger); background: var(--danger-soft); border: 1px solid var(--danger-soft); }
+
+  .dots { display: inline-flex; gap: 4px; padding: 8px 0; }
+  .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: blink 1.2s infinite both; }
+  .dots span:nth-child(2) { animation-delay: .2s } .dots span:nth-child(3) { animation-delay: .4s }
+  @keyframes blink { 0%, 80%, 100% { opacity: .2 } 40% { opacity: 1 } }
+  .timer { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* sources */
+  .sources { margin-top: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+  .sources summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: pointer; font-size: 12.5px; color: var(--muted); }
+  .sources summary::-webkit-details-marker { display: none; }
+  .sources summary .count { color: var(--accent); font-weight: 600; }
+  .sources.data summary .count { color: var(--amber); }
+  .sources[open] summary { border-bottom: 1px solid var(--border); }
+  .src { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .src:last-child { border-bottom: none; }
+  .src .t { font-weight: 600; font-size: 13px; line-height: 1.4; }
+  .src .m { color: var(--muted); font-size: 12px; word-break: break-all; margin-top: 2px; }
+  .src a { color: var(--accent); }
+  .sources.data .src a { color: var(--amber); }
+  .badge { display: inline-block; font-size: 10.5px; font-weight: 600; padding: 1px 7px; border-radius: 6px; margin-left: 6px; vertical-align: 1px; }
+  .b-ds { background: var(--accent-soft); color: var(--accent); }
+  .b-dist { background: var(--amber-soft); color: var(--amber); }
+
+  /* answer footer */
+  .foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+  .mini { font-size: 11.5px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; font-variant-numeric: tabular-nums; }
+  .mini.time { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-soft); font-weight: 600; }
+  .mini.http-bad { color: var(--danger); border-color: var(--danger-soft); }
+  .copy { margin-left: auto; font-size: 11.5px; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer; transition: all 0.2s; }
+  .copy:hover { color: var(--text); border-color: var(--border-strong); }
+  .legacy-meta { font-size: 11.5px; color: var(--muted); }
+
+  /* =================== composer =================== */
+  .composer-wrap {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 0 24px 24px; background: linear-gradient(to top, var(--bg) 60%, transparent);
+    z-index: 10; pointer-events: none;
+  }
+  .composer {
+    pointer-events: auto; max-width: 820px; margin: 0 auto;
+    display: flex; align-items: flex-end; gap: 10px; padding: 10px 10px 10px 20px;
+    border: 1px solid var(--border-strong); border-radius: 24px;
+    background: var(--bg); box-shadow: 0 4px 20px rgba(0,0,0,0.5); transition: all .2s;
+  }
+  .composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .composer textarea {
+    flex: 1; resize: none; border: none; background: none; outline: none;
+    min-height: 24px; max-height: 160px; padding: 10px 0; font-size: 15px; line-height: 1.5;
+  }
+  .composer textarea::placeholder { color: var(--faint); }
+  .send {
+    width: 44px; height: 44px; flex: 0 0 44px; border: none; border-radius: 18px;
+    background: var(--accent); color: var(--accent-ink); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+  }
+  .send:hover:not(:disabled) { opacity: 0.9; transform: scale(1.02); }
+  .send:disabled { opacity: .35; cursor: default; background: var(--surface-2); color: var(--muted); }
+  .composer-hint { max-width: 780px; margin: 8px auto 0; font-size: 11px; color: var(--faint); text-align: center; pointer-events: auto; }
+
+  /* =================== small screens =================== */
+  .backdrop { display: none; }
+  @media (max-width: 820px) {
+    .sidebar { position: fixed; z-index: 20; top: 0; bottom: 0; left: 0; transform: translateX(-100%); transition: transform .3s; }
+    .sidebar.open { transform: none; }
+    .backdrop.show { display: block; position: fixed; inset: 0; z-index: 10; background: rgba(0,0,0,.7); }
+    .menubtn, .s-close { display: inline-flex; }
+    .topbar h1 { display: none; }
+    #titleInput { width: 100%; }
+    .composer-wrap { padding: 0 12px 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar" id="sidebar" aria-label="Recent chats">
+    <div class="brand">
+      <div class="logo" id="logo"></div>
+      <div>
+        <div class="brand-name">Idra Chatbot</div>
+        <div class="brand-sub">Advanced RAG System</div>
+      </div>
+      <button class="iconbtn s-close" id="closeSidebar">✕</button>
+    </div>
+    <button class="newchat" id="newChat">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      Nuova Chat
+    </button>
+    <div class="s-label">Cronologia (Max 50)</div>
+    <div class="history" id="history"></div>
+    <div class="s-foot" id="sFoot"></div>
+  </aside>
+  <div class="backdrop" id="backdrop"></div>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="iconbtn menubtn" id="menuBtn">☰</button>
+      <div class="title-wrap">
+        <h1 id="chatTitle">Nuova Chat</h1>
+        <button class="iconbtn" id="editTitleBtn" title="Rinomina chat">✏</button>
+        <input type="text" id="titleInput" style="display:none;" />
+      </div>
+      <span class="spacer"></span>
+      <span class="tag"><span class="dot" id="statusDot"></span><span id="modelPill"></span></span>
+      <button class="iconbtn" id="themeBtn">☀️</button>
+    </div>
+
+    <!-- Modulo delle Impostazioni di Connessione -->
+    <details class="settings" id="settings">
+      <summary><span class="chev">›</span> Parametri di connessione RAG</summary>
+      <div class="body">
+        <div class="grid">
+          <div><label for="endpoint">Endpoint URL</label><input id="endpoint" value="http://localhost:3000/chat"></div>
+          <div><label for="tenant">Tenant (X-Tenant-Id)</label><input id="tenant" value="default-tenant"></div>
+          <div><label for="token">Bearer token</label><input id="token" type="password" placeholder="ADMIN_TOKEN"></div>
+          <div><label for="userid">User ID</label><input id="userid" placeholder="Identificativo utente"></div>
+          <div><label for="conv">Conversation ID</label><input id="conv" placeholder="(generato in automatico)"></div>
+          <div><label for="model">Modello LLM</label>
+            <select id="model">
+              <option value="">Server default</option>
+              <option value="mistral:7b">mistral:7b</option>
+              <option value="hf.co/bartowski/EuroLLM-9B-Instruct-GGUF:Q4_K_M">EuroLLM-9B-Instruct</option>
+              <option value="mistral-nemo">Mistral-Nemo</option>
+            </select>
+          </div>
+        </div>
+        <div class="hint">Le impostazioni sono salvate localmente nel browser. Il Conversation ID permette al chatbot di ricordare il contesto della discussione.</div>
+      </div>
+    </details>
+
+    <div class="chat" id="chat"><div class="thread" id="thread"></div></div>
+
+    <div class="composer-wrap">
+      <div class="composer">
+        <textarea id="message" rows="1" placeholder="Scrivi al tuo RAG Chatbot..."></textarea>
+        <button class="send" id="sendBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        </button>
+      </div>
+      <div class="composer-hint">Premi Invio per inviare, Shift+Invio per andare a capo</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const chat = $("chat");
+  const thread = $("thread");
+
+  // ---- Impostazioni Storage Generali ----
+  const HISTORY_KEY = "idra_history";
+  const MAX_CHATS = 50;
+  let current = null;
+
+  const SUGGESTIONS = [
+    "I have an urban heat problem in a Mediterranean city, which nature-based solution can help?",
+    "which datasets do you have about Cluj-Napoca?",
+    "give me the CSV file for Cluj-Napoca climate data",
+    "quali dataset avete sul clima di Madrid?"
+  ];
+
+  const BOT_SVG = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2a1 1 0 0 1 1 1v1h3a3 3 0 0 1 3 3v1h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h1V7a3 3 0 0 1 3-3h3V3a1 1 0 0 1 1-1Zm-3 8.5A1.5 1.5 0 1 0 9 13.5 1.5 1.5 0 0 0 9 10.5Zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"/></svg>';
+  $("logo").innerHTML = BOT_SVG;
+
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[m])); }
+
+  function showEmpty() {
+    thread.innerHTML =
+      '<div class="empty" id="empty">' +
+        '<h2>Come posso aiutarti?</h2>' +
+        '<p>Sono Idra Chatbot, connesso al tuo database vettoriale. Fammi una domanda sui tuoi documenti.</p>' +
+        '<div class="suggest">' +
+          SUGGESTIONS.map(s => '<button class="chip">' + escapeHtml(s) + '</button>').join("") +
+        '</div>' +
+      '</div>';
+  }
+  showEmpty();
+
+  // ---- Tema ----
+  const themeBtn = $("themeBtn");
+  function setTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    themeBtn.textContent = (t === "dark") ? "☀️" : "🌙";
+    try { localStorage.setItem("idra_theme", t); } catch (e) {}
+  }
+  setTheme((() => { try { return localStorage.getItem("idra_theme") || "dark"; } catch (e) { return "dark"; } })());
+  themeBtn.addEventListener("click", () => setTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark"));
+
+  // ---- Settings Persistence ----
+  const KEYS = ["endpoint", "tenant", "token", "userid", "conv", "model"];
+  function persist(k) { try { localStorage.setItem("idra_" + k, $(k).value); } catch (e) {} }
+  KEYS.forEach(k => { try { const v = localStorage.getItem("idra_" + k); if (v !== null) $(k).value = v; } catch (e) {} });
+  KEYS.forEach(k => $(k).addEventListener("input", () => persist(k)));
+
+  function modelLabel() { const s = $("model"); return s.options[s.selectedIndex].text; }
+  function updatePill() { $("modelPill").textContent = modelLabel(); }
+  $("model").addEventListener("change", () => { persist("model"); updatePill(); });
+  updatePill();
+
+  function setStatus(ok) { $("statusDot").className = "dot " + (ok ? "ok" : "bad"); }
+  function hideEmpty() { const e = $("empty"); if (e) e.remove(); }
+  function scrollDown() { chat.scrollTop = chat.scrollHeight; }
+
+  // Gestione Clicks (Suggestions & Copy)
+  thread.addEventListener("click", (e) => {
+    const chip = e.target.closest(".chip");
+    if (chip) { $("message").value = chip.textContent; autogrow(); $("message").focus(); return; }
+    const copy = e.target.closest(".copy");
+    if (copy) copyText(copy, copy.closest(".bot-body").querySelector(".text").innerText);
+  });
+
+  async function copyText(btn, text) {
+    try { await navigator.clipboard.writeText(text); }
+    catch (e) {
+      const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta);
+      ta.select(); try { document.execCommand("copy"); } catch (e2) {} ta.remove();
+    }
+    btn.textContent = "Copiato"; setTimeout(() => { btn.textContent = "Copia"; }, 1200);
+  }
+
+  // =====================================================================
+  // Gestione Rinomina Titolo Inline
+  // =====================================================================
+  const titleEl = $("chatTitle");
+  const titleInput = $("titleInput");
+  const editTitleBtn = $("editTitleBtn");
+
+  function enableTitleEdit() {
+    if (!current) return;
+    titleEl.style.display = "none";
+    editTitleBtn.style.display = "none";
+    titleInput.style.display = "block";
+    titleInput.value = current.title;
+    titleInput.focus();
+  }
+
+  function saveTitle() {
+    if (!current) return;
+    const newTitle = titleInput.value.trim();
+    if (newTitle) { current.title = newTitle; saveCurrent(); }
+    titleEl.textContent = current.title;
+    titleInput.style.display = "none";
+    titleEl.style.display = "block";
+    editTitleBtn.style.display = "inline-flex";
+  }
+
+  editTitleBtn.addEventListener("click", enableTitleEdit);
+  titleInput.addEventListener("blur", saveTitle);
+  titleInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") saveTitle();
+    if (e.key === "Escape") { titleInput.value = current.title; saveTitle(); }
+  });
+
+  // =====================================================================
+  // History e Classificazione Chat
+  // =====================================================================
+  function loadHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch (e) { return []; } }
+  function saveHistory(list) { try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); } catch (e) {} }
+
+  function saveCurrent() {
+    if (!current) return;
+    current.updatedAt = Date.now();
+    const list = loadHistory().filter(c => c.id !== current.id);
+    list.unshift(current);
+    saveHistory(list.slice(0, MAX_CHATS));
+    renderHistory();
+  }
+
+  function adoptId(newId) {
+    if (!current || !newId || newId === current.id) return;
+    const oldId = current.id;
+    current.id = newId;
+    saveHistory(loadHistory().filter(c => c.id !== oldId));
+    $("conv").value = newId; persist("conv");
+  }
+
+  function renderHistory() {
+    const list = loadHistory();
+    const box = $("history");
+    $("sFoot").textContent = list.length + " di " + MAX_CHATS + " chat salvate";
+    titleEl.textContent = current ? current.title : "Nuova Chat";
+
+    if (!list.length) { box.innerHTML = '<div class="h-empty">Le tue chat appariranno qui.</div>'; return; }
+
+    box.innerHTML = "";
+    list.forEach(c => {
+      const item = document.createElement("div");
+      item.className = "h-item" + (current && current.id === c.id ? " active" : "");
+
+      item.innerHTML = `
+        <div class="h-main">
+          <button class="h-open">
+            <div class="h-title">${escapeHtml(c.title || "(senza titolo)")}</div>
+            <div class="h-sub">${new Date(c.updatedAt).toLocaleDateString()} - ${c.messages.length} msg</div>
+          </button>
+          <div class="h-rating">
+            <button class="rate-btn ${c.rating === 'ok' ? 'active' : ''}" data-val="ok">🟢 OK</button>
+            <button class="rate-btn ${c.rating === 'imprecise' ? 'active' : ''}" data-val="imprecise">🟡 Non preciso</button>
+            <button class="rate-btn ${c.rating === 'wrong' ? 'active' : ''}" data-val="wrong">🔴 Sbagliato</button>
+          </div>
+        </div>
+        <button class="h-del" title="Elimina chat">✕</button>
+      `;
+
+      item.querySelector(".h-open").addEventListener("click", () => openChat(c.id));
+      const rateBtns = item.querySelectorAll(".rate-btn");
+      rateBtns.forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const val = btn.getAttribute("data-val");
+          c.rating = (c.rating === val) ? null : val;
+          const updatedList = loadHistory().map(x => x.id === c.id ? c : x);
+          saveHistory(updatedList);
+          if(current && current.id === c.id) current.rating = c.rating;
+          renderHistory();
+        });
+      });
+      item.querySelector(".h-del").addEventListener("click", () => {
+        saveHistory(loadHistory().filter(x => x.id !== c.id));
+        if (current && current.id === c.id) newChat(); else renderHistory();
+      });
+      box.appendChild(item);
+    });
+  }
+
+  function openChat(id) {
+    const c = loadHistory().find(x => x.id === id);
+    if (!c) return;
+    current = c;
+    $("conv").value = c.id; persist("conv");
+    thread.innerHTML = "";
+    c.messages.forEach(m => (m.role === "user") ? addUser(m.text) : fillBot(botShell(), m));
+    renderHistory(); closeSidebar(); $("message").focus();
+  }
+
+  function newChat() {
+    current = null; showEmpty(); $("conv").value = ""; persist("conv");
+    renderHistory(); closeSidebar(); $("message").focus();
+  }
+
+  function openSidebar() { $("sidebar").classList.add("open"); $("backdrop").classList.add("show"); }
+  function closeSidebar() { $("sidebar").classList.remove("open"); $("backdrop").classList.remove("show"); }
+  $("menuBtn").addEventListener("click", openSidebar);
+  $("closeSidebar").addEventListener("click", closeSidebar);
+  $("backdrop").addEventListener("click", closeSidebar);
+
+  // =====================================================================
+  // Rendering Messaggi & Chiamate di Rete
+  // =====================================================================
+  function render(text) {
+    let out = escapeHtml(text);
+    out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    out = out.replace(/(^|[^"'>=])(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+    return out;
+  }
+  function typeBadge(id) {
+    const s = String(id || "");
+    if (s.includes("Distribution")) return '<span class="badge b-dist">Distribution</span>';
+    if (s.includes("Dataset")) return '<span class="badge b-ds">Dataset</span>';
+    return "";
+  }
+
+  function addUser(text) {
+    hideEmpty();
+    const el = document.createElement("div"); el.className = "msg user";
+    el.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
+    thread.appendChild(el); scrollDown();
+  }
+
+  function botShell() {
+    hideEmpty();
+    const el = document.createElement("div"); el.className = "msg bot";
+    el.innerHTML = `<div class="avatar">${BOT_SVG}</div><div class="bot-body"></div>`;
+    thread.appendChild(el); return el;
+  }
+
+  function addTyping() {
+    const el = botShell();
+    el.querySelector(".bot-body").innerHTML =
+      '<div class="dots"><span></span><span></span><span></span></div>' +
+      '<div class="timer">Sto pensando… 0.0s</div>';
+    scrollDown();
+    const t0 = performance.now();
+    const timerEl = el.querySelector(".timer");
+    el._iv = setInterval(() => { timerEl.textContent = "Sto pensando… " + ((performance.now() - t0) / 1000).toFixed(1) + "s"; }, 100);
+    return el;
+  }
+
+  function sourcesHtml(src, word, extraClass) {
+    if (!Array.isArray(src) || !src.length) return "";
+    const items = src.map(s => {
+      const link = s.url ? '<a href="' + escapeHtml(s.url) + '" target="_blank" rel="noopener">' + escapeHtml(s.url) + "</a>" : "Nessun link";
+      return '<div class="src"><div class="t">' + escapeHtml(s.title || "(senza titolo)") + typeBadge(s.datasetId) + "</div>" +
+             (s.datasetId ? '<div class="m">' + escapeHtml(s.datasetId) + "</div>" : "") +
+             '<div class="m">' + link + "</div></div>";
+    }).join("");
+    return '<details class="sources ' + (extraClass || "") + '"><summary><span class="count">' + src.length +
+           "</span> " + word + (src.length > 1 ? "i" : "e") + "</summary>" + items + "</details>";
+  }
+
+  function footHtml(m) {
+    if (m.info) {
+      const i = m.info;
+      return '<div class="foot">' +
+        (i.time ? '<span class="mini time">' + escapeHtml(i.time) + "s</span>" : "") +
+        (i.model ? '<span class="mini">' + escapeHtml(i.model) + "</span>" : "") +
+        (i.status ? '<span class="mini' + (i.status >= 400 ? " http-bad" : "") + '">HTTP ' + i.status + "</span>" : "") +
+        (m.error ? "" : '<button class="copy">Copia</button>') + "</div>";
+    }
+    return m.meta ? '<div class="foot"><span class="legacy-meta">' + m.meta + "</span></div>" : "";
+  }
+
+  function fillBot(el, m) {
+    if (el._iv) { clearInterval(el._iv); el._iv = null; }
+    if (m.error) el.classList.add("error");
+    el.querySelector(".bot-body").innerHTML =
+      '<div class="text">' + render(m.text) + "</div>" +
+      sourcesHtml(m.sources, "fonte", "") +
+      sourcesHtml(m.dataSources, "fonte dati", "data") +
+      footHtml(m);
+    scrollDown();
+  }
+
+  async function send() {
+    const msg = $("message").value.trim();
+    if (!msg) return;
+    $("message").value = ""; autogrow();
+    $("sendBtn").disabled = true;
+
+    if (!current) {
+      const id = $("conv").value.trim() || ("chat_" + Date.now().toString(36));
+      current = { id: id, title: msg.slice(0, 40), rating: null, updatedAt: Date.now(), messages: [] };
+      $("conv").value = id; persist("conv");
+    }
+
+    current.messages.push({ role: "user", text: msg }); saveCurrent();
+    addUser(msg);
+    const typingEl = addTyping();
+
+    // Payload aggiornato con UserID integrato
+    const body = {
+      message: msg,
+      conversationId: current.id,
+      userId: $("userid").value.trim()
+    };
+
+    if ($("model").value) body.model = $("model").value;
+    const model = modelLabel();
+
+    const t0 = performance.now();
+    let botMsg;
+
+    try {
+      const resp = await fetch($("endpoint").value.trim(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + $("token").value.trim(),
+          "X-Tenant-Id": $("tenant").value.trim(),
+          "X-User-Id": $("userid").value.trim() // Passato anche negli header per sicurezza
+        },
+        body: JSON.stringify(body)
+      });
+      const time = ((performance.now() - t0) / 1000).toFixed(1);
+      const raw = await resp.text();
+      let data = null; try { data = JSON.parse(raw); } catch (e) {}
+      const info = { time: time, model: model, status: resp.status };
+      setStatus(resp.ok);
+
+      if (!resp.ok) {
+        botMsg = { text: "Errore " + resp.status + "\n" + raw.slice(0, 1500), info: info, error: true };
+      } else {
+        if (data && data.conversationId) adoptId(data.conversationId);
+        botMsg = {
+          text: (data && data.answer) ? data.answer : raw,
+          sources: (data && Array.isArray(data.sources)) ? data.sources : [],
+          dataSources: (data && Array.isArray(data.dataSourcesToConsult)) ? data.dataSourcesToConsult : [],
+          info: info
+        };
+      }
+    } catch (err) {
+      const time = ((performance.now() - t0) / 1000).toFixed(1);
+      setStatus(false);
+      botMsg = { text: "Richiesta fallita: " + err.message + "\n\nVerifica che l'endpoint sia corretto e che il backend supporti CORS.", info: { time: time, model: model }, error: true };
+    } finally {
+      $("sendBtn").disabled = false;
+      $("message").focus();
+    }
+
+    fillBot(typingEl, botMsg);
+    current.messages.push(Object.assign({ role: "bot" }, botMsg));
+    saveCurrent();
+  }
+
+  function autogrow() { const t = $("message"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 160) + "px"; }
+
+  $("sendBtn").addEventListener("click", send);
+  $("message").addEventListener("input", autogrow);
+  $("message").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+  $("newChat").addEventListener("click", newChat);
+
+  renderHistory();
+  const lastId = $("conv").value.trim();
+  if (lastId && loadHistory().some(c => c.id === lastId)) openChat(lastId);
+</script>
+</body>
+</html>
