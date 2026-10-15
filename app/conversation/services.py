@@ -32,6 +32,7 @@ async def append_assistant_message(
     tenant_id: str,
     user_id: str,
     message_content: str,
+    sources: list | None = None,                 # [NEW] risorse mostrate nella risposta
 ) -> ConversationMessageDTO:
     """Save assistant message to conversation history."""
     doc = await repositories.save_message(
@@ -40,11 +41,25 @@ async def append_assistant_message(
         user_id=user_id,
         role="assistant",
         content=message_content,
+        sources=sources,                         # [NEW]
     )
     return ConversationMessageDTO(
         role=doc["role"],
         content=doc["content"],
         createdAt=doc["createdAt"],
+    )
+
+
+async def get_last_sources(                      # [NEW]
+    conversation_id: str,
+    tenant_id: str,
+    user_id: str,
+) -> list:
+    """Resources shown in the most recent assistant answer that had any."""
+    return await repositories.get_last_sources(
+        conversation_id=conversation_id,
+        tenant_id=tenant_id,
+        user_id=user_id,
     )
 
 
@@ -59,7 +74,7 @@ async def get_conversation(
         user_id=user_id,
         tenant_id=tenant_id,
     )
-    
+
     messages = [
         ConversationMessageDTO(
             role=m["role"],
@@ -68,7 +83,7 @@ async def get_conversation(
         )
         for m in messages_raw
     ]
-    
+
     owner_user_id = messages_raw[0].get("userId", "") if messages_raw else ""
 
     return ConversationHistoryDTO(
@@ -83,13 +98,13 @@ async def get_conversation(
 
 async def get_context_for_llm(
     conversation_id: str,
-    user_id:str,
+    user_id: str,
     tenant_id: str,
     limit: int = 10,
 ) -> str:
     """
     Format conversation history as context string for LLM prompt injection.
-    
+
     Returns formatted string like:
     User: [first message]
     Assistant: [response]
@@ -102,13 +117,13 @@ async def get_context_for_llm(
         tenant_id=tenant_id,
         limit=limit,
     )
-    
+
     if not messages:
         return ""
-    
+
     context_lines = []
     for msg in messages:
         role_label = "User" if msg["role"] == "user" else "Assistant"
         context_lines.append(f"{role_label}: {msg['content']}")
-    
+
     return "\n".join(context_lines)

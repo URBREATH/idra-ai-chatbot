@@ -6,6 +6,9 @@ load_dotenv()
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "localhost")
 OLLAMA_PORT = int(os.getenv("OLLAMA_PORT", "11434"))
+LLM_NUM_CTX = int(os.getenv("LLM_NUM_CTX", "16384"))
+LLM_NUM_PREDICT = int(os.getenv("LLM_NUM_PREDICT", "1536"))
+
 BASE_URL = f"http://{OLLAMA_HOST}:{OLLAMA_PORT}"
 
 async def list_models() -> list[str]:
@@ -35,7 +38,7 @@ async def generate_completion(prompt: str, model: str = os.getenv("OLLAMA_LLM_MO
                 "model": model,
                 "messages": [{"role": "user", "content": prompt}],
                 "stream": False,
-                "options": {"temperature": temperature, "num_ctx": 4096, "num_predict": 1024}
+                "options": {"temperature": temperature, "num_ctx": LLM_NUM_CTX, "num_predict": 1024}
             },
             timeout=httpx.Timeout(connect=10.0, read=1200.0, write=30.0, pool=30.0),
         )
