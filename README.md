@@ -145,7 +145,7 @@ required settings and sensible values.
 ```bash
 docker compose up -d mongo
 docker compose exec -T mongo mongoimport \
-  --db rag_platform --collection entities --jsonArray < entities.json
+  --db rag_platform --collection <collectionName> --jsonArray < entities.json
 ```
 
 **3. Pull the models into Ollama** (embedding model is required and fixed; generation model is your
@@ -153,7 +153,7 @@ choice):
 
 ```bash
 docker compose exec ollama ollama pull mxbai-embed-large
-docker compose exec ollama ollama pull qwen2.5:7b
+docker compose exec ollama ollama pull mistral-nemo
 ```
 
 **4. Start the whole stack:**
@@ -205,10 +205,18 @@ hits ChromaDB's `/api/v2/heartbeat`, and queries Ollama's `/api/tags`. If every 
 it returns `status: "UP"` with HTTP `200`; if any is unreachable it returns `status: "DEGRADED"`
 with HTTP `503`, so monitors and orchestrators can react to the status code.
 
-## License
+# Dependencies
+
+| | |
+| --- | --- |
+| **Dependencies** | MongoDB, ChromaDB, Ollama, Python (or Anaconda), Docker, Orion, NGSI Broker  |
+| **Contacts** | marco.dauria@eng.it |
 
 *(Add the project's license here — e.g. Apache-2.0 or EUPL, per the URBREATH project's conventions.)*
 
 
 
 curl -s -w '\nHTTP %{http_code}\n' -X POST http://localhost:3000/chat -H 'Content-Type: application/json' -H "Authorization: Bearer $ADMIN_TOKEN" -H 'X-Tenant-Id: default-tenant' -d '{"message":"have you got some datasets related to Cluj-Napoca?"}'
+
+## License
+This project is distributed under **Apache-2.0** license.
