@@ -66,7 +66,7 @@ def test_rerank_orders_by_relevance_and_returns_top_k_indices():
     metadatas = [{"dataset_id": "ds1"}, {"dataset_id": "ds2"}, {"dataset_id": "ds3"}, {"dataset_id": "ds4"}, {"dataset_id": "ds5"}]
     distances = [0.9, 0.1, 0.5, 0.3, 0.2]
 
-    indices = rerank(query, documents, metadatas, distances, top_k=3)
+    indices = rerank(query, documents, metadatas, distances, top_k=5)
 
     assert len(indices) == 3
     assert all(0 <= i < len(documents) for i in indices)

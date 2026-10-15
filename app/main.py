@@ -1,7 +1,9 @@
 import asyncio
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI, Depends, Request, Response, status
+from fastapi.responses import FileResponse
 from pydantic_settings import BaseSettings
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -63,6 +65,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.include_router(chat_router)
+
+_FRONTEND_PATH = Path(__file__).parent / "static" / "index.html"
+
+
+@app.get("/", include_in_schema=False)
+async def frontend():
+    return FileResponse(_FRONTEND_PATH)
 
 # ---------------------------------------------------------------------------
 # In-memory metrics counters (M9 - Monitoring)

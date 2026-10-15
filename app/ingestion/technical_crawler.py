@@ -1,4 +1,7 @@
+import logging
 from typing import Any, Dict, List
+
+logger = logging.getLogger(__name__)
 
 
 def _is_geometry(value: Any) -> bool:
@@ -6,7 +9,6 @@ def _is_geometry(value: Any) -> bool:
 
 
 def _collect_terms(value: Any, terms: List[str], seen: set) -> None:
-    """Recursively walk the dataset structure collecting all string/number values."""
     if isinstance(value, bool):
         return
     if isinstance(value, dict):
@@ -25,12 +27,10 @@ def _collect_terms(value: Any, terms: List[str], seen: set) -> None:
 
 
 async def crawl(dataset: Dict[str, Any]) -> str:
-    """Recursive scan of dataset structure extracting dimension names, SDMX codes,
-    labels, and nested descriptions (ARCHITECTURE.md - Technical Crawler).
-
-    Output: a deduplicated, space-joined string of technical terms.
-    """
     terms: List[str] = []
     seen: set = set()
     _collect_terms(dataset, terms, seen)
-    return " ".join(terms)
+    result = " ".join(terms)
+    dataset_id = dataset.get("_id", {}).get("id", "?")
+    logger.debug(f"[crawl] {dataset_id}: {len(terms)} termini, {len(result)} char")
+    return result
