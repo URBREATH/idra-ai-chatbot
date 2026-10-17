@@ -67,7 +67,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],      # per i test in locale va bene tutto; in produzione restringi
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],      # necessario per far passare Authorization e X-Tenant-Id
 )

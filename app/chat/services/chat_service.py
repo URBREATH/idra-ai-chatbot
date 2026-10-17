@@ -303,11 +303,15 @@ def _build_no_result_prompt(message: str, conversation_context: str = "") -> str
 
 
 def build_prompt(message, retrieval_context, conversation_context=None,
-                 relaxed=False, system=SYSTEM_INSTRUCTIONS) -> str:      # <-- system scelto dall'esterno
+                 relaxed=False, system=SYSTEM_INSTRUCTIONS, lang_code: str | None = None) -> str:      # <-- system scelto dall'esterno
     retrieval_block = retrieval_context if retrieval_context else "(no context available)"
-    prompt_parts = [system]
+    system_parts = [system]
+    if lang_code:
+        system_parts.insert(0, _language_directive(lang_code))
     if relaxed:
-        prompt_parts.append(RELAXED_NOTICE)
+        system_parts.append(RELAXED_NOTICE)
+    system = "\n".join(system_parts)
+    prompt_parts = [system]
     if conversation_context:
         prompt_parts.append("Previous conversation:")
         prompt_parts.append(conversation_context)
@@ -315,7 +319,7 @@ def build_prompt(message, retrieval_context, conversation_context=None,
     prompt_parts.append("Context (metadata of the retrieved resources):")
     prompt_parts.append(retrieval_block)
     prompt_parts.append("")
-    if system == NBS_INSTRUCTIONS:
+    if system.strip().startswith(NBS_INSTRUCTIONS.strip().split("\n")[0]):
         prompt_parts.append(f"Question: {message}")
         prompt_parts.append("")
         prompt_parts.append(NBS_DECISION_REMINDER)
@@ -479,7 +483,7 @@ def _log_found_resources(documents, metadatas, distances) -> None:
 
 
 def _build_no_result_prompt(message: str, conversation_context: str = "", lang_code: str | None = None) -> "tuple[str, str]":
-    system = _language_directive(lang_code) + _NO_RESULT_INSTRUCTIONS
+    system = _language_directive(lang_code) + NO_RESULT_INSTRUCTIONS
     user_parts: list[str] = []
     if conversation_context:
         user_parts.append("Previous conversation:")
@@ -490,25 +494,6 @@ def _build_no_result_prompt(message: str, conversation_context: str = "", lang_c
         "conversation (words like 'these', 'those', 'the second one'), answer using that "
         "conversation, not a new search."
     )
-    return system, "\n".join(user_parts)
-
-
-def build_prompt(message, retrieval_context, conversation_context=None, relaxed=False, lang_code: str | None = None) -> "tuple[str, str]":
-    system_parts: list[str] = [_language_directive(lang_code), _SYSTEM_INSTRUCTIONS]
-    if relaxed:
-        system_parts.append(_RELAXED_NOTICE)
-    system = "\n".join(system_parts)
-
-    user_parts: list[str] = []
-    if conversation_context:
-        user_parts.append("Previous conversation:")
-        user_parts.append(conversation_context)
-        user_parts.append("")
-    user_parts.append("Context (metadata of the retrieved resources):")
-    user_parts.append(retrieval_context if retrieval_context else "(no context available)")
-    user_parts.append("")
-    user_parts.append(f"Question: {message}")
-    user_parts.append("")
     return system, "\n".join(user_parts)
 
 
@@ -583,9 +568,9 @@ async def generate_answer(
         prompt = _build_no_result_prompt(message, conversation_context)
         try:
             if model:
-                answer = await ollama_client.generate_completion(user_prompt, model=model, temperature=0.0, system=system)
+                answer = await ollama_client.generate_completion(prompt, model=model, temperature=0.0, system=system)
             else:
-                answer = await ollama_client.generate_completion(user_prompt, temperature=0.0, system=system)
+                answer = await ollama_client.generate_completion(prompt, temperature=0.0, system=system)
         except Exception as e:
             logger.debug(f"No-result generation failed, using fallback: {e}")
             answer = NO_ALTERNATIVE_MESSAGE
@@ -707,13 +692,13 @@ async def generate_answer(
 
     system = NBS_INSTRUCTIONS if nbs else SYSTEM_INSTRUCTIONS
     logger.debug("PROMPT SCELTO: %s", "NBS" if nbs else "GENERIC")
-    prompt = build_prompt(message, context, conversation_context, relaxed=relaxed, system=system)
+    prompt = build_prompt(message, context, conversation_context, relaxed=relaxed, system=str(system), lang_code=lang_code)
     logger.debug("PROMPT: %d caratteri (~%d token stimati)", len(prompt), len(prompt) // 4)   # [NEW]
 
     if model:
-        answer = await ollama_client.generate_completion(user_prompt, model=model, temperature=0.0, system=system)
+        answer = await ollama_client.generate_completion(prompt, model=model, temperature=0.0, system=system)
     else:
-        answer = await ollama_client.generate_completion(user_prompt, temperature=0.0, system=system)
+        answer = await ollama_client.generate_completion(prompt, temperature=0.0, system=system)
 
     allowed_text = "\n".join([
         context or "",

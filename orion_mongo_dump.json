@@ -1,0 +1,1224 @@
+[
+    {
+        "_id": {
+            "id": "urn:ngsi-ld:Dataset:urbreath:nbs:dataset:barrios-productores-red-de-795051f253cc-8",
+            "type": "https://uri.etsi.org/ngsi-ld/default-context/Dataset",
+            "servicePath": "/"
+        },
+        "attrNames": [
+            "http://purl.org/dc/terms/identifier",
+            "http://purl.org/dc/terms/title",
+            "https://uri.etsi.org/ngsi-ld/default-context/datasetDescription",
+            "http://purl.org/dc/terms/accessRights",
+            "'https://uri.etsi.org/ngsi-ld/default-context/landingPage'",
+            "http://purl.org/dc/terms/issued",
+            "http://purl.org/dc/terms/modified",
+            "http://purl.org/dc/terms/type",
+            "http://purl.org/dc/terms/hasVersion",
+            "http://purl.org/dc/terms/accrualPeriodicity"
+        ],
+        "attrs": {
+            "http://purl=org/dc/terms/identifier": {
+                "type": "Property",
+                "value": 45,
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/title": {
+                "type": "Property",
+                "value": "Barrios productores: Red de Huertos comunitarios en Madrid",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "https://uri=etsi=org/ngsi-ld/default-context/datasetDescription": {
+                "type": "Property",
+                "value": "Objective:\\nEl Programa de Huertos Urbanos Comunitarios tiene como objetivo promover espacios de agricultura urbana sostenibles, gestionados colectivamente por la ciudadan&iacute;a bajo principios agroecol&oacute;gicos. En el caso de Carabanchel, como en otros distritos, se busca no solo recuperar suelo urbano infrautilizado, sino generar espacios vivos de encuentro vecinal, aprendizaje ambiental y producci&oacute;n alimentaria local. Los huertos funcionan como infraestructuras verdes sociales que contribuyen a la renaturalizaci&oacute;n de los barrios, al tiempo que fomentan la soberan&iacute;a alimentaria, la resiliencia comunitaria y el compromiso ciudadano con el entorno.\\n\\nChallenges:\\nUno de los retos clave ha sido consolidar y sostener estas iniciativas en el tiempo, garantizando el acceso a recursos b&aacute;sicos como agua, herramientas y asesoramiento t&eacute;cnico. La relaci&oacute;n entre colectivos ciudadanos y administraci&oacute;n tambi&eacute;n ha requerido procesos de negociaci&oacute;n y adaptaci&oacute;n normativa, especialmente en relaci&oacute;n con la cesi&oacute;n de espacios p&uacute;blicos. En algunos casos, los huertos enfrentan tensiones con usos urbanos colindantes o sufren actos vand&aacute;licos. Adem&aacute;s, sostener el compromiso colectivo, el relevo generacional de participantes y el mantenimiento del huerto con criterios agroecol&oacute;gicos exige una gesti&oacute;n comunitaria s&oacute;lida y coordinada.\\n\\nProblems:\\n- Climate action for adaptation, resilience and mitigation\\n- Social justice, inequality and social cohesion\\n- Sustainable consumption and production\\n- Inclusive and effective governance\\n\\nPotential impacts and benefits:\\nLos huertos comunitarios generan m&uacute;ltiples beneficios: mejoran la biodiversidad urbana, transforman espacios degradados en activos ecol&oacute;gicos y sociales, y fomentan h&aacute;bitos sostenibles. Adem&aacute;s, fortalecen el tejido comunitario, promoviendo relaciones de vecindad, inclusi&oacute;n social y aprendizaje intergeneracional. En Carabanchel, los huertos se han convertido en lugares de referencia para la educaci&oacute;n ambiental, el ocio saludable y la participaci&oacute;n ciudadana. Tambi&eacute;n funcionan como nodos de una red m&aacute;s amplia que contribuye a la creaci&oacute;n de una ciudad m&aacute;s verde, justa y autosuficiente, articulando producci&oacute;n local, cultura colaborativa y activismo ambiental.\\n\\nLessons learnt:\\nEste caso muestra que los huertos urbanos pueden ser motores de transformaci&oacute;n ecol&oacute;gica y social cuando se apoyan en la autogesti&oacute;n y el arraigo territorial. La experiencia de Madrid subraya la importancia de acompa&ntilde;ar estos procesos con marcos normativos claros, recursos municipales y redes de apoyo como la FRAUM. La continuidad de los huertos depende no solo del entusiasmo vecinal, sino tambi&eacute;n de su reconocimiento institucional como parte de las infraestructuras verdes urbanas. Se ha aprendido que un huerto no es solo un espacio de cultivo, sino una plataforma de aprendizaje colectivo, resiliencia urbana y cultura c&iacute;vica.\\n\\nArea characterization:\\nHUERTOS URBANOS COMUNITARIOS: CARABANCHEL | El Programa de Huertos Urbanos Comunitarios pretende apoyar iniciativas ciudadanas, impulsadas por la Red de Huertos Urbanos de Madrid y la FRAUM, para desarrollar proyectos comunitarios de agricultura urbana sostenible, siguiendo las premisas de la agroecolog&iacute;a. Este Programa se inici&oacute; en el a&ntilde;o 2014 con 17 huertos urbanos comunitarios, a los que se sumaron 9 huertos en 2016, 16 en 2017 y 14 m&aacute;s en 2018 y 2019, con lo que, actualmente, Madrid cuenta con m&aacute;s de medio centenar de huertos urbanos comunitarios municipales, distribuidos por todos sus Distritos. Los beneficios de estos proyectos son m&uacute;ltiples m&aacute;s all&aacute; de la actividad agr&iacute;cola. Los huertos constituyen una herramienta para educar en la sostenibilidad, tejer relaciones entre los vecinos y desarrollar proyectos inclusivos y de convivencia. Estos huertos urbanos se convierten as&iacute; en espacios de educaci&oacute;n ambiental desde los vecinos y para los vecinos, donde los ciudadanos participan activamente en el proceso de &ldquo;naturaci&oacute;n urbana&rdquo;.",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accessRights": {
+                "type": "Property",
+                "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "'https://uri=etsi=org/ngsi-ld/default-context/landingPage'": {
+                "type": "Property",
+                "value": "https://dashboard-dev.urbreath.tech/tools/nbs-registry/nbs-details/45",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/issued": {
+                "type": "Property",
+                "value": "2025-07-26T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/modified": {
+                "type": "Property",
+                "value": "2025-07-26T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/type": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/hasVersion": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accrualPeriodicity": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            }
+        },
+        "creDate": 1789562144.6301627,
+        "modDate": 1789562144.6301627,
+        "lastCorrelator": ""
+    },
+    {
+        "_id": {
+            "id": "urn:ngsi-ld:Dataset:urbreath:nbs:dataset:centro-de-mayores-de-f6290bc34dee-8",
+            "type": "https://uri.etsi.org/ngsi-ld/default-context/Dataset",
+            "servicePath": "/"
+        },
+        "attrNames": [
+            "http://purl.org/dc/terms/identifier",
+            "http://purl.org/dc/terms/title",
+            "https://uri.etsi.org/ngsi-ld/default-context/datasetDescription",
+            "http://purl.org/dc/terms/accessRights",
+            "'https://uri.etsi.org/ngsi-ld/default-context/landingPage'",
+            "http://purl.org/dc/terms/issued",
+            "http://purl.org/dc/terms/modified",
+            "http://purl.org/dc/terms/type",
+            "http://purl.org/dc/terms/hasVersion",
+            "http://purl.org/dc/terms/accrualPeriodicity"
+        ],
+        "attrs": {
+            "http://purl=org/dc/terms/identifier": {
+                "type": "Property",
+                "value": 41,
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/title": {
+                "type": "Property",
+                "value": "Centro de Mayores de Pez Austral",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "https://uri=etsi=org/ngsi-ld/default-context/datasetDescription": {
+                "type": "Property",
+                "value": "Objective:\\nEl objetivo principal del proyecto fue dise&ntilde;ar un edificio de consumo energ&eacute;tico casi nulo, integrando soluciones pasivas y activas que optimicen el confort t&eacute;rmico y reduzcan la huella ecol&oacute;gica. En ese marco, se apost&oacute; por incorporar naturaleza en la arquitectura mediante una fachada vegetal continua, que no solo mejora el comportamiento t&eacute;rmico del edificio, sino que tambi&eacute;n suaviza su integraci&oacute;n visual en un entorno residencial denso. La soluci&oacute;n de fachada verde busca mejorar el microclima, incrementar el aislamiento t&eacute;rmico y ac&uacute;stico, y aprovechar el agua de lluvia mediante sistemas de drenaje sostenible para el riego, consolidando una arquitectura adaptada al clima y al contexto urbano.\\n\\nChallenges:\\nUno de los retos clave fue combinar exigencias t&eacute;cnicas de eficiencia energ&eacute;tica con criterios est&eacute;ticos y de integraci&oacute;n urbana, especialmente en un entorno residencial donde la privacidad y el respeto al paisaje construido eran fundamentales. Adem&aacute;s, la implementaci&oacute;n de un sistema de fachada vegetal con riego mediante aguas pluviales requiri&oacute; una planificaci&oacute;n cuidadosa del ciclo h&iacute;drico, desde la recogida hasta su almacenamiento y distribuci&oacute;n. Otro desaf&iacute;o fue asegurar la viabilidad y el mantenimiento del sistema vegetal en un clima seco, evitando que el verde se convierta en una carga t&eacute;cnica o visual a largo plazo.\\n\\nProblems:\\n- Climate action for adaptation, resilience and mitigation\\n\\nPotential impacts and benefits:\\nLa fachada verde act&uacute;a como una barrera natural frente a la radiaci&oacute;n solar directa, reduciendo la demanda de climatizaci&oacute;n del edificio y mejorando el confort interior. Adem&aacute;s, incrementa la superficie vegetal urbana, favoreciendo la biodiversidad local, absorbiendo contaminantes atmosf&eacute;ricos y mejorando la calidad del aire. A nivel urbano, el proyecto reduce el efecto isla de calor y genera un entorno m&aacute;s amable para las personas mayores usuarias del centro. Tambi&eacute;n aporta valor est&eacute;tico y psicol&oacute;gico al barrio, promoviendo la conexi&oacute;n con la naturaleza y sirviendo como ejemplo replicable de arquitectura bioclim&aacute;tica y renaturalizaci&oacute;n urbana en equipamientos p&uacute;blicos.\\n\\nLessons learnt:\\nEl caso demuestra que es posible integrar infraestructura verde y eficiencia energ&eacute;tica en edificios p&uacute;blicos sin comprometer su funcionalidad ni su inserci&oacute;n en entornos urbanos consolidados. Una de las lecciones m&aacute;s importantes es la necesidad de dise&ntilde;ar soluciones sostenibles que consideren el ciclo completo del agua y el mantenimiento a largo plazo de los elementos vegetales. La combinaci&oacute;n de tecnolog&iacute;as como la geotermia, el drenaje urbano sostenible y la fachada verde refuerza la idea de que la renaturalizaci&oacute;n no solo es compatible con la innovaci&oacute;n tecnol&oacute;gica, sino que puede potenciarla. Este enfoque es especialmente valioso en ciudades con clima continental como Madrid.\\n\\nArea characterization:\\nFACHADAS VERDES | El Centro de Mayores de Pez Austral fue concebido como un edificio de consumo energ&eacute;tico casi nulo. Entre las t&eacute;cnicas y elementos empleados para reducir su demanda t&eacute;rmica, se ha incorporado una capa exterior de fachada a base de un entramado vegetal que reduce la absorci&oacute;n de radiaci&oacute;n de los muros y act&uacute;a como aislante visual y ac&uacute;stico. El riego de dichas plantas emplea agua de lluvia recogida en la superficie urbanizada del entorno del edificio, en el que se ha implantado un sistema de drenaje sostenible que recoge y conduce el agua de lluvia a dos aljibes enterrados, desde donde se bombea a la red de riego. El edificio, que est&aacute; pensado para mantener una temperatura constante durante todo el a&ntilde;o de 22&ordm;C, funciona sin requerir energ&iacute;a primaria no renovable en un alto porcentaje de d&iacute;as al a&ntilde;o, bastando con el abastecimiento de energ&iacute;a geot&eacute;rmica para climatizaci&oacute;n y ACS a trav&eacute;s de la bomba de calor. Situado en un &aacute;rea eminentemente residencial, se ha dise&ntilde;ado un edificio cuya presencia f&iacute;sica no altere el car&aacute;cter privado y evite la conexi&oacute;n visual con las viviendas colindantes, mediante una fachada de doble hoja en las dos caras laterales, con un recubrimiento vegetal en toda su superficie.",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accessRights": {
+                "type": "Property",
+                "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "'https://uri=etsi=org/ngsi-ld/default-context/landingPage'": {
+                "type": "Property",
+                "value": "https://dashboard-dev.urbreath.tech/tools/nbs-registry/nbs-details/41",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/issued": {
+                "type": "Property",
+                "value": "2025-07-26T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/modified": {
+                "type": "Property",
+                "value": "2025-07-26T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/type": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/hasVersion": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accrualPeriodicity": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            }
+        },
+        "creDate": 1789562144.6301627,
+        "modDate": 1789562144.6301627,
+        "lastCorrelator": ""
+    },
+    {
+        "_id": {
+            "id": "urn:ngsi-ld:Dataset:urbreath:nbs:dataset:green-canopy-corridor-madrid-f935a45865ff-8",
+            "type": "https://uri.etsi.org/ngsi-ld/default-context/Dataset",
+            "servicePath": "/"
+        },
+        "attrNames": [
+            "http://purl.org/dc/terms/identifier",
+            "http://purl.org/dc/terms/title",
+            "https://uri.etsi.org/ngsi-ld/default-context/datasetDescription",
+            "http://purl.org/dc/terms/accessRights",
+            "'https://uri.etsi.org/ngsi-ld/default-context/landingPage'",
+            "http://purl.org/dc/terms/issued",
+            "http://purl.org/dc/terms/modified",
+            "http://purl.org/dc/terms/type",
+            "http://purl.org/dc/terms/hasVersion",
+            "http://purl.org/dc/terms/accrualPeriodicity"
+        ],
+        "attrs": {
+            "http://purl=org/dc/terms/identifier": {
+                "type": "Property",
+                "value": 84,
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/title": {
+                "type": "Property",
+                "value": "Green Canopy Corridor � Madrid South",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "https://uri=etsi=org/ngsi-ld/default-context/datasetDescription": {
+                "type": "Property",
+                "value": "Objective:\\no create a continuous green corridor using urban forestry and permeable surfaces, enhancing thermal comfort, improving air quality, and increasing biodiversity. The project also aims to promote active mobility through the integration of walking and cycling paths.\\n\\nChallenges:\\nHeat island effect intensified by dense construction\\n\\nPoor air quality and noise pollution from traffic\\n\\nProblems:\\n- Climate action for adaptation, resilience and mitigation\\n\\nPotential impacts and benefits:\\nReduction of ambient temperature by up to 2&deg;C in summer months\\n\\nLessons learnt:\\nEarly and inclusive community engagement is critical to adoption and long-term maintenance\\n\\nCollaboration with mobility planners ensures functional integration with city transport strategies\\n\\nPilot testing of materials (e.g. permeable pavements) helped adapt solutions to local climate conditions\\n\\nUsing digital tools and simulations (digital twins) significantly improved scenario planning and stakeholder\\n\\nArea characterization:\\nThe intervention area is a densely built-up urban neighborhood in the southern zone of Madrid, characterized by limited green space, high vehicular traffic, and vulnerable populations exposed to heatwaves and air pollution. The site covers approximately 1.8 hectares along a former underused street corridor.",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accessRights": {
+                "type": "Property",
+                "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "'https://uri=etsi=org/ngsi-ld/default-context/landingPage'": {
+                "type": "Property",
+                "value": "https://dashboard-dev.urbreath.tech/tools/nbs-registry/nbs-details/84",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/issued": {
+                "type": "Property",
+                "value": "2025-09-24T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/modified": {
+                "type": "Property",
+                "value": "2025-09-24T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/type": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/hasVersion": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accrualPeriodicity": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            }
+        },
+        "creDate": 1789562144.6301627,
+        "modDate": 1789562144.6301627,
+        "lastCorrelator": ""
+    },
+    {
+        "_id": {
+            "id": "urn:ngsi-ld:Dataset:urbreath:nbs:dataset:itinerarios-escolares-naturales-2e39f9ecc415-8",
+            "type": "https://uri.etsi.org/ngsi-ld/default-context/Dataset",
+            "servicePath": "/"
+        },
+        "attrNames": [
+            "http://purl.org/dc/terms/identifier",
+            "http://purl.org/dc/terms/title",
+            "https://uri.etsi.org/ngsi-ld/default-context/datasetDescription",
+            "http://purl.org/dc/terms/accessRights",
+            "'https://uri.etsi.org/ngsi-ld/default-context/landingPage'",
+            "http://purl.org/dc/terms/issued",
+            "http://purl.org/dc/terms/modified",
+            "http://purl.org/dc/terms/type",
+            "http://purl.org/dc/terms/hasVersion",
+            "http://purl.org/dc/terms/accrualPeriodicity"
+        ],
+        "attrs": {
+            "http://purl=org/dc/terms/identifier": {
+                "type": "Property",
+                "value": 46,
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/title": {
+                "type": "Property",
+                "value": "Itinerarios  escolares + Naturales",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "https://uri=etsi=org/ngsi-ld/default-context/datasetDescription": {
+                "type": "Property",
+                "value": "Objective:\\nEl prop&oacute;sito es dotar los entornos escolares de una identidad ecol&oacute;gica y social, transformando patios y accesos en espacios clim&aacute;ticamente adaptados, seguros e inclusivos. Se busca revegetar zonas, mejorar la accesibilidad y fomentar encuentros comunitarios m&aacute;s all&aacute; del uso escolar. El dise&ntilde;o participativo con alumnado, padres, docentes y vecinos pretende fortalecer la apropiaci&oacute;n colectiva del espacio urbano, promoviendo convivencia, bienestar y educaci&oacute;n ambiental en la vida cotidiana del barrio\\n\\nChallenges:\\nLa iniciativa enfrenta retos t&eacute;cnicos, operativos y sociales: transformar espacios asfaltados en entornos verdes y permeables exige intervenir en infraestructuras consolidadas y coordinar varias &aacute;reas municipales. Adem&aacute;s, requiere integrar el dise&ntilde;o participativo con el funcionamiento cotidiano del colegio, envolver a familias y vecinos y asegurar continuidad en gesti&oacute;n y mantenimiento. En algunos casos, abrir colegios al barrio implica adaptaci&oacute;n normativa y coordinaci&oacute;n extra entre administraciones\\n\\nProblems:\\n- Climate action for adaptation, resilience and mitigation\\n- Green space, habitats and biodiversity\\n- Social justice, inequality and social cohesion\\n- Regeneration, land use and urban development\\n- Ecosystem-based adaptation\\n- Economic development and decent employment\\n- Inclusive and effective governance\\n\\nPotential impacts and benefits:\\nLos entornos naturalizados mejoran la calidad t&eacute;rmica y ambiental reduciendo la temperatura y ofreciendo sombra, reducen la escorrent&iacute;a, aumentan la biodiversidad urbana y potencian el aprendizaje activo al aire libre. Generan espacios de encuentro vecinal que refuerzan la cohesi&oacute;n social e integraci&oacute;n intergeneracional. En centros como CEIP Navas de Tolosa, se han transformado patios duros en oasis urbanos con vegetaci&oacute;n, sombra y &aacute;reas seguras, beneficiando a barrios vulnerables con presencia multicultural y generando orgullo local\\n\\nLessons learnt:\\nEsta estrategia evidencia que las intervenciones en entornos escolares pueden actuar como motores de renaturalizaci&oacute;n urbana y cambio educativo. El enfoque participativo y comunitario es vital para la apropiaci&oacute;n y sostenibilidad del espacio. Tambi&eacute;n se destaca que los patios naturalizados deben dise&ntilde;arse no solo para el juego, sino como aulas de naturaleza que integran educaci&oacute;n ambiental y salud. Finalmente, el &eacute;xito de los proyectos requiere alineaci&oacute;n institucional, capacitaci&oacute;n docente y gesti&oacute;n intersectorial entre distritos, equipamientos y ciudadanos\\n\\nArea characterization:\\nITINERARIOS ESCOLARES + NATURALES | El programa municipal &ldquo;Entornos escolares naturales, sostenibles y amables&rdquo; impulsa la transformaci&oacute;n del espacio exterior de los colegios p&uacute;blicos de Madrid en entornos integrados con la naturaleza. Coordinado por las &aacute;reas de Urbanismo, Medio Ambiente y Movilidad y Red de Educaci&oacute;n Ambiental, el proyecto se ha aplicado en centros como el CEIP Sagunto, El Greco y Navas de Tolosa. Se trata de redise&ntilde;ar los patios y los accesos escolares connaturalizaci&oacute;n: vegetaci&oacute;n, pavimentos permeables, itinerarios seguros y mobiliario participativo, co-dise&ntilde;ado con la comunidad educativa. El objetivo es que los patios funcionen como espacios de juego, aprendizaje y conexi&oacute;n comunitaria, abiertos tambi&eacute;n al vecindario fuera del horario escolar",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accessRights": {
+                "type": "Property",
+                "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "'https://uri=etsi=org/ngsi-ld/default-context/landingPage'": {
+                "type": "Property",
+                "value": "https://dashboard-dev.urbreath.tech/tools/nbs-registry/nbs-details/46",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/issued": {
+                "type": "Property",
+                "value": "2025-07-26T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/modified": {
+                "type": "Property",
+                "value": "2025-07-26T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/type": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/hasVersion": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accrualPeriodicity": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            }
+        },
+        "creDate": 1789562144.6301627,
+        "modDate": 1789562144.6301627,
+        "lastCorrelator": ""
+    },
+    {
+        "_id": {
+            "id": "urn:ngsi-ld:Dataset:urbreath:nbs:dataset:laboratorio-de-fachadas-verdes-234ccbe4394d-8",
+            "type": "https://uri.etsi.org/ngsi-ld/default-context/Dataset",
+            "servicePath": "/"
+        },
+        "attrNames": [
+            "http://purl.org/dc/terms/identifier",
+            "http://purl.org/dc/terms/title",
+            "https://uri.etsi.org/ngsi-ld/default-context/datasetDescription",
+            "http://purl.org/dc/terms/accessRights",
+            "'https://uri.etsi.org/ngsi-ld/default-context/landingPage'",
+            "http://purl.org/dc/terms/issued",
+            "http://purl.org/dc/terms/modified",
+            "http://purl.org/dc/terms/type",
+            "http://purl.org/dc/terms/hasVersion",
+            "http://purl.org/dc/terms/accrualPeriodicity"
+        ],
+        "attrs": {
+            "http://purl=org/dc/terms/identifier": {
+                "type": "Property",
+                "value": 42,
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/title": {
+                "type": "Property",
+                "value": "Laboratorio de fachadas verdes | itdUPM",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "https://uri=etsi=org/ngsi-ld/default-context/datasetDescription": {
+                "type": "Property",
+                "value": "Objective:\\nEl proyecto busca experimentar e investigar el potencial de las fachadas vegetales como soluci&oacute;n de adaptaci&oacute;n clim&aacute;tica y mejora del confort t&eacute;rmico en entornos urbanos. En concreto, se plantea como un laboratorio vivo para estudiar la reducci&oacute;n de la temperatura mediante vegetaci&oacute;n vertical, as&iacute; como evaluar la viabilidad t&eacute;cnica de estructuras modulares con sustrato integrado. Al tratarse de una iniciativa dentro del itdUPM, el proyecto tambi&eacute;n tiene un objetivo pedag&oacute;gico y colaborativo, integrando a estudiantes, investigadores y profesionales en procesos de aprendizaje pr&aacute;ctico y co-creaci&oacute;n de soluciones sostenibles.\\n\\nChallenges:\\nUno de los principales retos ha sido desarrollar un sistema modular que permita la integraci&oacute;n del sustrato y el crecimiento radicular completo sin comprometer la estabilidad estructural o la durabilidad del sistema. Al tratarse de un prototipo experimental, tambi&eacute;n ha sido necesario establecer par&aacute;metros de medici&oacute;n rigurosos que permitan obtener datos comparables sobre temperatura, humedad y crecimiento vegetal. Adem&aacute;s, coordinar los tiempos y capacidades de un equipo heterog&eacute;neo &mdash;conformado por estudiantes, profesorado y empresa&mdash; implic&oacute; desaf&iacute;os de gesti&oacute;n, comunicaci&oacute;n y alineaci&oacute;n de objetivos entre los distintos actores.\\n\\nProblems:\\n- Climate action for adaptation, resilience and mitigation\\n- Working with nature\\n\\nPotential impacts and benefits:\\nEl laboratorio proporciona evidencias valiosas sobre los beneficios t&eacute;rmicos de las fachadas verdes en climas como el de Madrid, lo que puede servir para futuras normativas o proyectos de regeneraci&oacute;n urbana. La instalaci&oacute;n mejora localmente el confort t&eacute;rmico y la calidad del aire, adem&aacute;s de aportar biodiversidad vegetal a la arquitectura del campus. Socialmente, fomenta una cultura de sostenibilidad entre la comunidad universitaria, y genera un espacio de colaboraci&oacute;n pr&aacute;ctica entre academia y empresa, promoviendo la innovaci&oacute;n abierta en soluciones basadas en la naturaleza. A medio plazo, puede escalarse o replicarse en otros edificios p&uacute;blicos o residenciales.\\n\\nLessons learnt:\\nEste caso demuestra el valor de los entornos universitarios como espacios de experimentaci&oacute;n para la renaturalizaci&oacute;n urbana. La participaci&oacute;n activa de estudiantes y profesionales refuerza procesos de aprendizaje significativo y genera conocimiento aplicado que puede transferirse a contextos reales. Tambi&eacute;n se ha evidenciado la importancia del dise&ntilde;o modular con sustrato accesible para las ra&iacute;ces, lo que favorece la salud de las plantas y la eficacia t&eacute;rmica del sistema. Finalmente, el enfoque colaborativo refuerza la necesidad de generar alianzas entre universidad, administraci&oacute;n y empresas para desarrollar soluciones sostenibles, escalables y adaptadas a las condiciones locales.\\n\\nArea characterization:\\nFACHADAS VERDES | Dentro de la actual Sede del Centro de Innovaci&oacute;n en Tecnolog&iacute;as para el Desarrollo Humano de la Universidad Polit&eacute;cnica de Madrid se ha llevado a cabo un proyecto colaborativo en el que estudiantes, profesores y profesionales de la empresa Vertiarte, investigan la reducci&oacute;n de temperaturas mediante el uso de fachadas vegetales. Esta fachada est&aacute; realizada a partir de una estructura modular, con la particularidad de que la parte frontal est&aacute; rellena de sustrato permitiendo el desarrollo completo de las ra&iacute;ces de las plantas.",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accessRights": {
+                "type": "Property",
+                "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "'https://uri=etsi=org/ngsi-ld/default-context/landingPage'": {
+                "type": "Property",
+                "value": "https://dashboard-dev.urbreath.tech/tools/nbs-registry/nbs-details/42",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/issued": {
+                "type": "Property",
+                "value": "2025-07-26T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/modified": {
+                "type": "Property",
+                "value": "2025-07-26T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/type": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/hasVersion": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accrualPeriodicity": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            }
+        },
+        "creDate": 1789562144.6301627,
+        "modDate": 1789562144.6301627,
+        "lastCorrelator": ""
+    },
+    {
+        "_id": {
+            "id": "urn:ngsi-ld:Dataset:urbreath:nbs:dataset:parco-del-naviglio-a2a488aa6ca1-8",
+            "type": "https://uri.etsi.org/ngsi-ld/default-context/Dataset",
+            "servicePath": "/"
+        },
+        "attrNames": [
+            "http://purl.org/dc/terms/identifier",
+            "http://purl.org/dc/terms/title",
+            "https://uri.etsi.org/ngsi-ld/default-context/datasetDescription",
+            "http://purl.org/dc/terms/accessRights",
+            "'https://uri.etsi.org/ngsi-ld/default-context/landingPage'",
+            "http://purl.org/dc/terms/issued",
+            "http://purl.org/dc/terms/modified",
+            "http://purl.org/dc/terms/type",
+            "http://purl.org/dc/terms/hasVersion",
+            "http://purl.org/dc/terms/accrualPeriodicity"
+        ],
+        "attrs": {
+            "http://purl=org/dc/terms/identifier": {
+                "type": "Property",
+                "value": 64,
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/title": {
+                "type": "Property",
+                "value": "Parco del Naviglio",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "https://uri=etsi=org/ngsi-ld/default-context/datasetDescription": {
+                "type": "Property",
+                "value": "Objective:\\nL&rsquo;intervento riguarda il completamento della riqualificazione del Parco Nord, gi&agrave; avviato con un primo lotto. L&rsquo;obiettivo &egrave; migliorare l&rsquo;accessibilit&agrave;, la fruibilit&agrave; e l&rsquo;attrattivit&agrave; del parco, favorendo l&rsquo;uso collettivo e inclusivo dello spazio verde. Il progetto si inserisce nel piano &ldquo;Parma citt&agrave; verde&rdquo; e risponde anche a priorit&agrave; condivise con cittadini, scuole, associazioni e aziende attraverso il percorso partecipativo pubblico &ldquo;ParcOfficina&rdquo;.\\n\\nChallenges:\\nLa realizzazione degli interventi ha comportato diverse sfide tecniche e gestionali. Una delle principali difficolt&agrave; &egrave; stata la necessit&agrave; di operare in un&rsquo;area soggetta a molteplici vincoli urbanistici, paesaggistici e ambientali. La presenza di zone a rischio alluvione, fasce di rispetto per elettrodotti e canali storici, nonch&eacute; la classificazione sismica dell&rsquo;area, ha richiesto particolare attenzione nella progettazione e nella definizione delle opere ammissibili. Infine, sebbene l&rsquo;area del parco sia delimitata e protetta, &egrave; stato necessario organizzare le lavorazioni in modo da non interferire con l&rsquo;utilizzo quotidiano da parte dei cittadini, garantendo sempre condizioni di sicurezza e accessibilit&agrave;.\\n\\nProblems:\\n- Green space, habitats and biodiversity\\n\\nPotential impacts and benefits:\\nSul piano ambientale, l&rsquo;intervento valorizza il patrimonio arboreo esistente e prevede la piantumazione di nuove alberature, contribuendo a migliorare la qualit&agrave; dell&rsquo;aria, l&rsquo;ombreggiamento e l&rsquo;aspetto paesaggistico dell&rsquo;area. L&rsquo;inserimento di nuove funzioni &ndash; come aree barbecue, spazi per il gioco libero, per il calisthenics e per i cani &ndash; incrementa le possibilit&agrave; di fruizione del parco da parte di un pubblico ampio e diversificato. La creazione di spazi dedicati ad attivit&agrave; ricreative, sportive e culturali (come l&rsquo;area eventi e concerti) rende il parco un punto di aggregazione sociale, favorendo l&rsquo;inclusione e il benessere collettivo. Importanti ricadute positive si attendono anche sul piano della sicurezza e dell&rsquo;accessibilit&agrave;, grazie alla manutenzione dei cancelli, all&rsquo;installazione di nuovi impianti di videosorveglianza e alla realizzazione di servizi igienici. L&rsquo;intervento, nel suo complesso, migliora l&rsquo;immagine urbana e consolida l&rsquo;identit&agrave; del parco come spazio pubblico centrale per la vita del quartiere.\\n\\nLessons learnt:\\nIl progetto ha confermato l&rsquo;importanza di un approccio partecipativo nella pianificazione degli spazi pubblici. Grazie al processo di consultazione attivato attraverso &ldquo;ParcOfficina&rdquo;, &egrave; stato possibile raccogliere indicazioni preziose dai cittadini, dalle scuole e dalle associazioni, che hanno orientato in modo concreto le scelte progettuali. &Egrave; emerso chiaramente come il coinvolgimento diretto della comunit&agrave; aumenti il senso di appartenenza e la cura verso il bene comune. Inoltre, l&rsquo;articolazione dell&rsquo;intervento in pi&ugrave; lotti ha mostrato la validit&agrave; di una strategia flessibile, capace di adattarsi nel tempo alle priorit&agrave; e alle risorse disponibili.\\n\\nArea characterization:\\nIl Parco Nord, noto anche come Parco del Naviglio, si estende per oltre 44.000 m&sup2; nella zona nord del centro urbano di Parma, tra via Paradigna e via Naviglio Alto. &Egrave; attraversato dal canale del Naviglio nel suo tratto a cielo aperto, elemento che ne caratterizza fortemente la morfologia e il valore paesaggistico. La presenza di una rete di alberature mature e la conformazione ampia e pianeggiante ne fanno un&rsquo;area verde di riferimento per i quartieri circostanti, facilmente accessibile e gi&agrave; in parte utilizzata per attivit&agrave; ricreative, sportive e di socializzazione. La zona &egrave; servita da infrastrutture esistenti e presenta potenzialit&agrave; di connessione con percorsi pedonali e ciclabili a scala urbana.",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accessRights": {
+                "type": "Property",
+                "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "'https://uri=etsi=org/ngsi-ld/default-context/landingPage'": {
+                "type": "Property",
+                "value": "https://dashboard-dev.urbreath.tech/tools/nbs-registry/nbs-details/64",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/issued": {
+                "type": "Property",
+                "value": "2025-08-06T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/modified": {
+                "type": "Property",
+                "value": "2025-08-06T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/type": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/hasVersion": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accrualPeriodicity": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            }
+        },
+        "creDate": 1789562144.6301627,
+        "modDate": 1789562144.6301627,
+        "lastCorrelator": ""
+    },
+    {
+        "_id": {
+            "id": "urn:ngsi-ld:Dataset:urbreath:nbs:dataset:picasso-food-forest-orto-83882565dda3-8",
+            "type": "https://uri.etsi.org/ngsi-ld/default-context/Dataset",
+            "servicePath": "/"
+        },
+        "attrNames": [
+            "http://purl.org/dc/terms/identifier",
+            "http://purl.org/dc/terms/title",
+            "https://uri.etsi.org/ngsi-ld/default-context/datasetDescription",
+            "http://purl.org/dc/terms/accessRights",
+            "'https://uri.etsi.org/ngsi-ld/default-context/landingPage'",
+            "http://purl.org/dc/terms/issued",
+            "http://purl.org/dc/terms/modified",
+            "http://purl.org/dc/terms/type",
+            "http://purl.org/dc/terms/hasVersion",
+            "http://purl.org/dc/terms/accrualPeriodicity"
+        ],
+        "attrs": {
+            "http://purl=org/dc/terms/identifier": {
+                "type": "Property",
+                "value": 49,
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/title": {
+                "type": "Property",
+                "value": "Picasso Food Forest: Orto e frutteto condiviso",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "https://uri=etsi=org/ngsi-ld/default-context/datasetDescription": {
+                "type": "Property",
+                "value": "Objective:\\nLa Picasso Food Forest nasce con l&rsquo;obiettivo di rigenerare un&rsquo;area urbana incolta e marginale nel quartiere Pablo di Parma, trasformandola in un ecosistema commestibile a gestione comunitaria. Il progetto intende creare un modello replicabile di foresta urbana coltivata, capace di unire produzione alimentare, biodiversit&agrave;, educazione ambientale e coesione sociale. Gli organizzatori puntano a diffondere pratiche agroecologiche ispirate alla permacultura, promuovendo un uso del suolo che sia sostenibile, resiliente e partecipato. L&rsquo;iniziativa vuole anche contrastare la cementificazione e sensibilizzare la cittadinanza sul valore degli spazi verdi condivisi, stimolando comportamenti collettivi di cura, apprendimento e responsabilit&agrave; ecologica.\\n\\nChallenges:\\nUna delle sfide principali affrontate dalla Picasso Food Forest &egrave; rappresentata dalla sua collocazione in un contesto urbano soggetto a pressioni infrastrutturali e scarsa protezione normativa. In particolare, il rischio di asfaltatura dell&rsquo;area da parte dell&rsquo;amministrazione comunale ha evidenziato la vulnerabilit&agrave; degli spazi verdi autogestiti all&rsquo;interno delle dinamiche di pianificazione urbana convenzionale. La gestione partecipata, inoltre, richiede continuit&agrave; nell&rsquo;impegno dei volontari, coordinamento tra i diversi attori coinvolti e strumenti adeguati di governance, elementi spesso difficili da mantenere senza un adeguato supporto istituzionale e finanziario. A ci&ograve; si aggiungono le sfide ecologiche tipiche di un ambiente antropizzato: suolo impoverito, esposizione climatica e presenza di inquinanti urbani.\\n\\nProblems:\\n- Social justice, inequality and social cohesion\\n- Working with nature\\n- Sustainable consumption and production\\n- Health and well-being\\n- Ecosystem-based approach\\n\\nPotential impacts and benefits:\\nLa Picasso Food Forest ha il potenziale di generare numerosi benefici su scala locale. Dal punto di vista ambientale, favorisce l&rsquo;incremento della biodiversit&agrave; urbana grazie alla presenza di centinaia di specie arboree, arbustive ed erbacee, molte delle quali autoctone o antiche. Questo contribuisce alla creazione di habitat per insetti impollinatori, piccoli animali e microrganismi del suolo. L&rsquo;intervento migliora inoltre la qualit&agrave; ecologica dell&rsquo;area, contribuendo alla ritenzione idrica, alla riduzione delle isole di calore e alla depurazione naturale dell&rsquo;aria. Dal punto di vista sociale e culturale, la Food Forest funziona come luogo aperto di aggregazione, educazione e inclusione. Le attivit&agrave; didattiche, i laboratori per le scuole e il coinvolgimento attivo dei cittadini rendono lo spazio una vera infrastruttura sociale verde, capace di generare benessere psicofisico, conoscenza e senso di appartenenza.\\n\\nLessons learnt:\\nL&rsquo;esperienza della Picasso Food Forest ha mostrato che un&rsquo;area urbana in disuso pu&ograve; diventare un bene comune ecologico se affidata alla cura condivisa e alla visione comunitaria. Il progetto dimostra che modelli di gestione orizzontale e inclusiva possono non solo attivare reti di cittadinanza attiva, ma anche fungere da catalizzatori per una nuova cultura urbana della natura. Tuttavia, &egrave; emersa chiaramente la necessit&agrave; di un riconoscimento formale da parte delle istituzioni, affinch&eacute; spazi come questo possano essere protetti e integrati nella pianificazione urbana come elementi strutturali della citt&agrave; sostenibile. L&rsquo;importanza dell&rsquo;educazione ambientale, dell&rsquo;accessibilit&agrave; universale e della progettazione basata sugli ecosistemi si conferma centrale per il successo e la resilienza di iniziative analoghe.\\n\\nArea characterization:\\nLa Picasso Food Forest si trova nel quartiere Pablo di Parma, all&rsquo;incrocio tra Via Picasso e Via Marconi, su un&rsquo;area pubblica di circa 4.500?m&sup2; precedentemente incolta e degradata. Inserita in un contesto urbano densamente edificato, l&rsquo;area &egrave; circondata da edifici residenziali, scuole e infrastrutture. Il progetto ha trasformato questo spazio marginale in un ecosistema produttivo e accessibile, con alberi da frutto, orti sinergici, un laghetto, aiuole aromatiche e installazioni educative, divenendo un punto di riferimento ecologico e sociale per il quartiere.",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accessRights": {
+                "type": "Property",
+                "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "'https://uri=etsi=org/ngsi-ld/default-context/landingPage'": {
+                "type": "Property",
+                "value": "https://dashboard-dev.urbreath.tech/tools/nbs-registry/nbs-details/49",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/issued": {
+                "type": "Property",
+                "value": "2025-07-28T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/modified": {
+                "type": "Property",
+                "value": "2025-07-28T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/type": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/hasVersion": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accrualPeriodicity": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            }
+        },
+        "creDate": 1789562144.6301627,
+        "modDate": 1789562144.6301627,
+        "lastCorrelator": ""
+    },
+    {
+        "_id": {
+            "id": "urn:ngsi-ld:Dataset:urbreath:nbs:dataset:renaturalizacion-de-patios-escolares-46bad6aa2afa-8",
+            "type": "https://uri.etsi.org/ngsi-ld/default-context/Dataset",
+            "servicePath": "/"
+        },
+        "attrNames": [
+            "http://purl.org/dc/terms/identifier",
+            "http://purl.org/dc/terms/title",
+            "https://uri.etsi.org/ngsi-ld/default-context/datasetDescription",
+            "http://purl.org/dc/terms/accessRights",
+            "'https://uri.etsi.org/ngsi-ld/default-context/landingPage'",
+            "http://purl.org/dc/terms/issued",
+            "http://purl.org/dc/terms/modified",
+            "http://purl.org/dc/terms/type",
+            "http://purl.org/dc/terms/hasVersion",
+            "http://purl.org/dc/terms/accrualPeriodicity"
+        ],
+        "attrs": {
+            "http://purl=org/dc/terms/identifier": {
+                "type": "Property",
+                "value": 43,
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/title": {
+                "type": "Property",
+                "value": "Renaturalizaci�n de patios escolares | CEIP Navas de Tolosa",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "https://uri=etsi=org/ngsi-ld/default-context/datasetDescription": {
+                "type": "Property",
+                "value": "Objective:\\nEl proyecto en el CEIP Navas de Tolosa persigui&oacute; la transformaci&oacute;n integral del patio escolar mediante soluciones basadas en la naturaleza, con el objetivo de crear un entorno m&aacute;s saludable, inclusivo y resiliente. La intervenci&oacute;n busc&oacute; mejorar las condiciones ambientales del patio &mdash;carente de vegetaci&oacute;n y con materiales que contribu&iacute;an al sobrecalentamiento&mdash; al tiempo que se promov&iacute;an din&aacute;micas educativas al aire libre y se reforzaba la conexi&oacute;n con el barrio de Villaverde. La estrategia incorpor&oacute; vegetaci&oacute;n, pavimentos permeables y zonas de sombra, adem&aacute;s de sistemas de drenaje sostenible que mejoran la gesti&oacute;n del agua de lluvia y su aprovechamiento por la vegetaci&oacute;n.\\n\\nChallenges:\\nEl patio original presentaba una alta impermeabilizaci&oacute;n y escasa presencia de naturaleza, caracter&iacute;sticas comunes en centros escolares de entornos urbanos vulnerables. Uno de los principales desaf&iacute;os fue compatibilizar la transformaci&oacute;n f&iacute;sica del espacio con las necesidades funcionales del centro y su uso diario. Tambi&eacute;n fue necesario adaptar los tiempos del proyecto a los calendarios escolares y a la disponibilidad del equipo educativo y de familias. Por otro lado, se abord&oacute; el reto de generar apropiaci&oacute;n comunitaria y sentido de pertenencia en un contexto marcado por la desigualdad social y la falta de referentes naturales cercanos.\\n\\nProblems:\\n- Climate action for adaptation, resilience and mitigation\\n\\nPotential impacts and benefits:\\nLa intervenci&oacute;n ha permitido reducir significativamente la temperatura del patio en los meses c&aacute;lidos, aumentando las zonas de sombra y vegetaci&oacute;n, lo que mejora el bienestar t&eacute;rmico del alumnado. La incorporaci&oacute;n de sistemas de drenaje sostenible favorece la infiltraci&oacute;n del agua de lluvia, evitando encharcamientos y mejorando la calidad del suelo. A nivel social, el patio se convierte en un espacio educativo vivo, que fortalece el v&iacute;nculo entre infancia, comunidad escolar y medio ambiente. En un distrito como Villaverde, este tipo de actuaciones contribuye tambi&eacute;n a reducir desigualdades ambientales y a generar espacios de cuidado colectivo y aprendizaje compartido.\\n\\nLessons learnt:\\nEl CEIP Navas de Tolosa demuestra que la renaturalizaci&oacute;n escolar es una herramienta poderosa de equidad urbana y justicia ambiental. La implicaci&oacute;n de la comunidad educativa en el proceso &mdash;desde el dise&ntilde;o hasta la implementaci&oacute;n&mdash; fue clave para asegurar su &eacute;xito. Tambi&eacute;n se aprendi&oacute; que, incluso en contextos con limitaciones t&eacute;cnicas o presupuestarias, es posible impulsar soluciones efectivas si se trabaja de forma colaborativa y adaptativa. La intervenci&oacute;n subraya la importancia de pensar los patios escolares no solo como espacios de juego, sino como infraestructuras verdes cr&iacute;ticas para la ciudad, especialmente en barrios vulnerables.\\n\\nArea characterization:\\nPATIOS ESCOLARES + NATURALES: CEIP NAVAS DE TOLOSA| Los patios escolares son lugares estrat&eacute;gicos de la ciudad donde se desarrollan actividades tanto del propio colegio como del barrio. La reintroducci&oacute;n de la naturaleza en los patios, habitualmente con grandes carencias, supone una oportunidad para mejorar estos espacios y contribuir a la resiliencia urbana. Se han llevado a cabo una serie de proyectos piloto para transformar los patios de recreo, con el fin de promover h&aacute;bitos saludables, favorecer la integraci&oacute;n, la conexi&oacute;n con el barrio y mejorar su adaptaci&oacute;n a los impactos del Cambio Clim&aacute;tico. Se ha seguido un proceso de creaci&oacute;n conjunta, desde la reflexi&oacute;n hasta la ejecuci&oacute;n, en el que cada comunidad escolar ha sido la protagonista. Se han generado espacios m&aacute;s frescos, con mayor superficie de sombra y pavimentos con mejor comportamiento frente a la absorci&oacute;n de radiaci&oacute;n solar. El dise&ntilde;o de los Sistemas de Drenaje Sostenible implantados garantiza la gesti&oacute;n de escorrent&iacute;as y permite la infiltraci&oacute;n en el terreno y la conducci&oacute;n de los flujos a zonas de suelo natural donde la vegetaci&oacute;n los pueda aprovechar.",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accessRights": {
+                "type": "Property",
+                "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "'https://uri=etsi=org/ngsi-ld/default-context/landingPage'": {
+                "type": "Property",
+                "value": "https://dashboard-dev.urbreath.tech/tools/nbs-registry/nbs-details/43",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/issued": {
+                "type": "Property",
+                "value": "2025-07-26T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/modified": {
+                "type": "Property",
+                "value": "2025-07-26T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/type": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/hasVersion": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accrualPeriodicity": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            }
+        },
+        "creDate": 1789562144.6301627,
+        "modDate": 1789562144.6301627,
+        "lastCorrelator": ""
+    },
+    {
+        "_id": {
+            "id": "urn:ngsi-ld:Dataset:urbreath:nbs:dataset:renaturalizacion-de-patios-escolares-7282528c84c3-8",
+            "type": "https://uri.etsi.org/ngsi-ld/default-context/Dataset",
+            "servicePath": "/"
+        },
+        "attrNames": [
+            "http://purl.org/dc/terms/identifier",
+            "http://purl.org/dc/terms/title",
+            "https://uri.etsi.org/ngsi-ld/default-context/datasetDescription",
+            "http://purl.org/dc/terms/accessRights",
+            "'https://uri.etsi.org/ngsi-ld/default-context/landingPage'",
+            "http://purl.org/dc/terms/issued",
+            "http://purl.org/dc/terms/modified",
+            "http://purl.org/dc/terms/type",
+            "http://purl.org/dc/terms/hasVersion",
+            "http://purl.org/dc/terms/accrualPeriodicity"
+        ],
+        "attrs": {
+            "http://purl=org/dc/terms/identifier": {
+                "type": "Property",
+                "value": 44,
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/title": {
+                "type": "Property",
+                "value": "Renaturalizaci�n de patios escolares | CEIP Ram�n Mar�a del Valle-Incl�n",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "https://uri=etsi=org/ngsi-ld/default-context/datasetDescription": {
+                "type": "Property",
+                "value": "Objective:\\nEl objetivo principal del proyecto fue transformar los patios escolares en espacios m&aacute;s verdes, inclusivos y resilientes, reintroduciendo la naturaleza en entornos tradicionalmente duros y asfaltados. Al actuar sobre lugares estrat&eacute;gicos donde confluyen comunidad educativa y vida de barrio, se busca mejorar el bienestar de la infancia, fomentar h&aacute;bitos saludables, aumentar la biodiversidad urbana y mitigar los efectos del cambio clim&aacute;tico. En el caso del CEIP Valle Incl&aacute;n, el redise&ntilde;o del patio se plante&oacute; como un proceso participativo donde el alumnado, las familias y el profesorado colaboraron en todas las fases, desde el diagn&oacute;stico hasta la implementaci&oacute;n de soluciones basadas en la naturaleza.\\n\\nChallenges:\\nEntre los principales desaf&iacute;os estuvo la transformaci&oacute;n de espacios muy consolidados con escasos recursos t&eacute;cnicos y econ&oacute;micos. Reconvertir patios con grandes superficies impermeables y sin vegetaci&oacute;n supuso adaptar el dise&ntilde;o a las condiciones preexistentes y garantizar la seguridad y funcionalidad para su uso escolar diario. Tambi&eacute;n fue clave compatibilizar los tiempos escolares con las fases del proceso participativo y de ejecuci&oacute;n. Por otro lado, implicar a toda la comunidad educativa de forma activa y sostenida en el tiempo exigi&oacute; un enfoque metodol&oacute;gico cuidadoso y sensible a las din&aacute;micas escolares y vecinales.\\n\\nProblems:\\n- Climate action for adaptation, resilience and mitigation\\n- Social justice, inequality and social cohesion\\n- Regeneration, land use and urban development\\n- Health and well-being\\n\\nPotential impacts and benefits:\\nEl redise&ntilde;o del patio ha mejorado notablemente las condiciones ambientales del centro: mayor sombra, descenso de la temperatura superficial, incremento de zonas verdes y creaci&oacute;n de microh&aacute;bitats. Tambi&eacute;n se ha fortalecido el sentido de pertenencia y el v&iacute;nculo emocional del alumnado con el espacio escolar. El uso de pavimentos permeables y sistemas de drenaje sostenible ha mejorado la gesti&oacute;n del agua de lluvia, reduciendo la escorrent&iacute;a y favoreciendo la infiltraci&oacute;n. A nivel urbano, este tipo de intervenciones aporta espacios de esponjamiento y adaptaci&oacute;n clim&aacute;tica que tambi&eacute;n benefician al barrio, contribuyendo a una red de infraestructuras verdes de proximidad.\\n\\nLessons learnt:\\nLa experiencia demuestra que los patios escolares pueden ser verdaderos laboratorios de renaturalizaci&oacute;n urbana, con beneficios directos para la salud, el aprendizaje y la cohesi&oacute;n social. El enfoque participativo fue clave para generar apropiaci&oacute;n del proceso y asegurar el mantenimiento futuro de los espacios. Se aprendi&oacute; que no es necesaria una gran inversi&oacute;n para generar cambios significativos, siempre que exista una visi&oacute;n clara, voluntad institucional y capacidad de mediaci&oacute;n con la comunidad. Adem&aacute;s, el proyecto evidencia que el dise&ntilde;o con criterios de sostenibilidad h&iacute;drica y clim&aacute;tica es compatible con las necesidades educativas, recreativas y sociales del entorno escolar.\\n\\nArea characterization:\\nPATIOS ESCOLARES + NATURALES: CEIP VALLE INCL&Aacute;N | Los patios escolares son lugares estrat&eacute;gicos de la ciudad donde se desarrollan actividades tanto del propio colegio como del barrio. La reintroducci&oacute;n de la naturaleza en los patios, habitualmente con grandes carencias, supone una oportunidad para mejorar estos espacios y contribuir a la resiliencia urbana. Se han llevado a cabo tres proyectos piloto para transformar los patios de recreo, con el fin de promover h&aacute;bitos saludables, favorecer la integraci&oacute;n, la conexi&oacute;n con el barrio y mejorar su adaptaci&oacute;n a los impactos del Cambio Clim&aacute;tico. Se ha seguido un proceso de creaci&oacute;n conjunta, desde la reflexi&oacute;n hasta la ejecuci&oacute;n, en el que cada comunidad escolar ha sido la protagonista. Se han generado espacios m&aacute;s frescos, con mayor superficie de sombra y pavimentos con mejor comportamiento frente a la absorci&oacute;n de radiaci&oacute;n solar. El dise&ntilde;o de los Sistemas de Drenaje Sostenible implantados garantiza la gesti&oacute;n de escorrent&iacute;as y permite la infiltraci&oacute;n en el terreno y la conducci&oacute;n de los flujos a zonas de suelo natural donde la vegetaci&oacute;n los pueda aprovechar.",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accessRights": {
+                "type": "Property",
+                "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "'https://uri=etsi=org/ngsi-ld/default-context/landingPage'": {
+                "type": "Property",
+                "value": "https://dashboard-dev.urbreath.tech/tools/nbs-registry/nbs-details/44",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/issued": {
+                "type": "Property",
+                "value": "2025-07-26T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/modified": {
+                "type": "Property",
+                "value": "2025-07-26T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/type": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/hasVersion": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accrualPeriodicity": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            }
+        },
+        "creDate": 1789562144.6301627,
+        "modDate": 1789562144.6301627,
+        "lastCorrelator": ""
+    },
+    {
+        "_id": {
+            "id": "urn:ngsi-ld:Dataset:urbreath:nbs:dataset:renaturalizacion-del-manzanares-1d6f06ec4c16-8",
+            "type": "https://uri.etsi.org/ngsi-ld/default-context/Dataset",
+            "servicePath": "/"
+        },
+        "attrNames": [
+            "http://purl.org/dc/terms/identifier",
+            "http://purl.org/dc/terms/title",
+            "https://uri.etsi.org/ngsi-ld/default-context/datasetDescription",
+            "http://purl.org/dc/terms/accessRights",
+            "'https://uri.etsi.org/ngsi-ld/default-context/landingPage'",
+            "http://purl.org/dc/terms/issued",
+            "http://purl.org/dc/terms/modified",
+            "http://purl.org/dc/terms/type",
+            "http://purl.org/dc/terms/hasVersion",
+            "http://purl.org/dc/terms/accrualPeriodicity"
+        ],
+        "attrs": {
+            "http://purl=org/dc/terms/identifier": {
+                "type": "Property",
+                "value": 40,
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/title": {
+                "type": "Property",
+                "value": "Renaturalizaci�n del Manzanares",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "https://uri=etsi=org/ngsi-ld/default-context/datasetDescription": {
+                "type": "Property",
+                "value": "Objective:\\nEl proyecto de renaturalizaci&oacute;n del r&iacute;o Manzanares busc&oacute; recuperar su funcionamiento ecol&oacute;gico como ecosistema fluvial y corredor verde dentro de la ciudad. Al abrir las compuertas de las presas urbanas, se pretend&iacute;a restaurar el flujo natural del agua, favoreciendo los procesos de sedimentaci&oacute;n y el desarrollo espont&aacute;neo de vegetaci&oacute;n palustre y de ribera. Adem&aacute;s, en zonas previamente artificializadas con escollera, se busc&oacute; facilitar la regeneraci&oacute;n del talud mediante el aporte de suelo f&eacute;rtil y la plantaci&oacute;n de especies aut&oacute;ctonas, con el fin de reforzar la biodiversidad, conectar espacios naturales urbanos y ofrecer un entorno m&aacute;s saludable y resiliente para la ciudadan&iacute;a.\\n\\nChallenges:\\nUno de los principales retos fue modificar una infraestructura urbana consolidada y concebida durante d&eacute;cadas bajo una l&oacute;gica hidr&aacute;ulica e ingenieril. La retirada parcial de las escolleras y la apertura de compuertas implicaron un cambio de paradigma: pasar del control al acompa&ntilde;amiento de los procesos naturales. Adem&aacute;s, se enfrentaron resistencias administrativas y sociales iniciales ante la &ldquo;aparente dejadez&rdquo; del cauce, ya que la renaturalizaci&oacute;n espont&aacute;nea contrasta con las ideas tradicionales de orden urbano. El mantenimiento adaptativo, la coordinaci&oacute;n entre &aacute;reas municipales y la gesti&oacute;n de las expectativas ciudadanas fueron aspectos clave durante la ejecuci&oacute;n.\\n\\nProblems:\\n- Climate action for adaptation, resilience and mitigation\\n- Green space, habitats and biodiversity\\n- Regeneration, land use and urban development\\n- Nature-based infrastructure\\n- Cultural heritage and cultural diversity\\n\\nPotential impacts and benefits:\\nEl proyecto ha generado m&uacute;ltiples beneficios ecosist&eacute;micos: aumento de la biodiversidad, mejora de la calidad del agua, creaci&oacute;n de h&aacute;bitats para aves y anfibios, y una mejora perceptible en el microclima urbano. La restauraci&oacute;n de la vegetaci&oacute;n ribere&ntilde;a y el flujo fluvial libre han transformado un canal artificial en un entorno din&aacute;mico y vivo, contribuyendo a la resiliencia frente al cambio clim&aacute;tico. Socialmente, el r&iacute;o ha pasado de ser una infraestructura olvidada a convertirse en un espacio p&uacute;blico de alto valor ambiental, educativo y recreativo, favoreciendo el contacto de la ciudadan&iacute;a con la naturaleza y promoviendo una nueva cultura urbana.\\n\\nLessons learnt:\\nLa renaturalizaci&oacute;n del Manzanares demuestra que dejar actuar a la naturaleza, con apoyos t&eacute;cnicos m&iacute;nimos pero estrat&eacute;gicos, puede producir transformaciones profundas en la ecolog&iacute;a urbana. Es clave dise&ntilde;ar procesos de intervenci&oacute;n flexibles, que integren conocimiento t&eacute;cnico, sensibilidad ambiental y participaci&oacute;n ciudadana. La gesti&oacute;n de la percepci&oacute;n social fue fundamental para consolidar el apoyo al proyecto. Tambi&eacute;n se aprendi&oacute; que las infraestructuras verdes urbanas no necesitan siempre grandes obras, sino una visi&oacute;n a largo plazo, una buena lectura del territorio y valent&iacute;a institucional para impulsar soluciones basadas en la naturaleza. El caso del Manzanares es hoy un referente europeo.\\n\\nArea characterization:\\nRESTAURACI&Oacute;N DE RIBERAS | En mayo de 2016 se abrieron las compuertas de las nueve presas existentes en el tramo urbano de 8 km del r&iacute;o Manzanares, entre el puente de Los Franceses y el nudo Sur de M30, permitiendo que el agua fluya libre y favoreciendo as&iacute; los procesos naturales de sedimentaci&oacute;n y desarrollo espont&aacute;neo de vegetaci&oacute;n palustre y arbolado de ribera. El nuevo h&aacute;bitat que ha surgido ha permitido un aumento de la biodiversidad y recuperar la funcionalidad del r&iacute;o como conector verde. En el a&ntilde;o 2017, en el tramo del r&iacute;o de 1,2 km de longitud entre los puentes de Los Franceses y de La Reina, donde una escollera de grandes bloques de granito ocupaba los taludes de sus m&aacute;rgenes impidiendo el crecimiento de la vegetaci&oacute;n, fue posible apoyar el proceso de recuperaci&oacute;n natural del r&iacute;o: se retir&oacute; la parte superior de la escollera, se aport&oacute; tierra vegetal cubriendo el resto del talud y se plantaron m&aacute;s de 15.000 &aacute;rboles, arbustos y estaquillas de especies de ribera: fresnos, &aacute;lamos blancos, alisos, majuelos, sa&uacute;cos, rosas silvestres, tarays, sauces y olmos de una variedad resistente a la grafiosis.",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accessRights": {
+                "type": "Property",
+                "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "'https://uri=etsi=org/ngsi-ld/default-context/landingPage'": {
+                "type": "Property",
+                "value": "https://dashboard-dev.urbreath.tech/tools/nbs-registry/nbs-details/40",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/issued": {
+                "type": "Property",
+                "value": "2025-07-26T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/modified": {
+                "type": "Property",
+                "value": "2025-07-26T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/type": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/hasVersion": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accrualPeriodicity": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            }
+        },
+        "creDate": 1789562144.6301627,
+        "modDate": 1789562144.6301627,
+        "lastCorrelator": ""
+    },
+    {
+        "_id": {
+            "id": "urn:ngsi-ld:Dataset:urbreath:nbs:dataset:rigenerazione-piazzale-salsi-91592e4ad778-8",
+            "type": "https://uri.etsi.org/ngsi-ld/default-context/Dataset",
+            "servicePath": "/"
+        },
+        "attrNames": [
+            "http://purl.org/dc/terms/identifier",
+            "http://purl.org/dc/terms/title",
+            "https://uri.etsi.org/ngsi-ld/default-context/datasetDescription",
+            "http://purl.org/dc/terms/accessRights",
+            "'https://uri.etsi.org/ngsi-ld/default-context/landingPage'",
+            "http://purl.org/dc/terms/issued",
+            "http://purl.org/dc/terms/modified",
+            "http://purl.org/dc/terms/type",
+            "http://purl.org/dc/terms/hasVersion",
+            "http://purl.org/dc/terms/accrualPeriodicity"
+        ],
+        "attrs": {
+            "http://purl=org/dc/terms/identifier": {
+                "type": "Property",
+                "value": 50,
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/title": {
+                "type": "Property",
+                "value": "Rigenerazione Piazzale Salsi",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "https://uri=etsi=org/ngsi-ld/default-context/datasetDescription": {
+                "type": "Property",
+                "value": "Objective:\\nIl progetto mira a trasformare Piazzale Salsi e l&rsquo;area scolastica adiacente in uno spazio urbano integrato, aperto e inclusivo. Tra gli obiettivi principali rientrano la creazione di percorsi pedonali e ciclabili protetti, in grado di mettere in connessione aree attualmente separate della citt&agrave;, l&rsquo;introduzione di zone verdi didattiche come orti urbani, un sentiero sensoriale, un Bosco Didattico e aule all&rsquo;aperto per favorire attivit&agrave; formative e ricreative all&rsquo;esterno. Il progetto prevede inoltre la realizzazione di spazi sportivi polifunzionali, percorsi inclusive, nuovi arredi e illuminazione Led, per promuovere la fruizione quotidiana degli spazi da parte di tutti i cittadini.\\n\\nChallenges:\\nUna sfida cruciale &egrave; la complessit&agrave; dell&rsquo;integrazione urbana: occorre realizzare una riqualificazione che non solo valorizzi spazi esistenti, ma che riesca a creare una continuit&agrave; reale tra zone scolastiche, commerciali e residenziali, migliorando l'accessibilit&agrave; e eliminando barriere architettoniche. L&rsquo;elevato costo dell&rsquo;intervento (1,5 milioni di euro, di cui 870 mila derivanti da fondi ATUSS/FESR) richiede un&rsquo;adeguata gestione delle risorse ed una continuit&agrave; progettuale dalla fase ideativa alla manutenzione futura. Un ulteriore nodo riguarda la governance delle aree verdi e didattiche: garantire una manutenzione inclusiva e partecipata nel tempo implica coinvolgere scuole, cittadini, terzo settore e istituzioni locali in modo coerente e duraturo.\\n\\nProblems:\\n- Green space, habitats and biodiversity\\n- Regeneration, land use and urban development\\n- Climate action for adaptation, resilience and mitigation\\n\\nPotential impacts and benefits:\\nIl progetto ha il potenziale di rigenerare ambienti urbani poco vissuti, conferendo loro funzioni ecologiche, educative e sociali. Il Bosco Didattico, con i suoi 116 alberi documentati, offre un catalogo vegetazionale utile sia per la didattica che per la biodiversit&agrave; cittadina. Il sentiero sensoriale, insieme alle zone a libero accrescimento, contribuisce a creare microhabitat spontanei e a favorire l'interazione con la natura. Le aule all&rsquo;aperto, gli orti urbani e gli spazi sportivi polifunzionali supportano attivit&agrave; scolastiche, eventi culturali, momenti di socialit&agrave; intergenerazionale e benessere fisico. Infine, il nuovo layout viabilistico (Zone 30) migliora la sicurezza pedonale e ciclabile, potenziando la mobilit&agrave; sostenibile locale.\\n\\nLessons learnt:\\nQuesto progetto evidenzia come la rigenerazione urbana possa fungere da leva per restituire centralit&agrave; sociale e identit&agrave; agli spazi pubblici, se si combinano visione progettuale, partecipazione comunitaria e politiche integrate. L&rsquo;inclusione di funzioni didattiche permanenti come il Bosco e il Sentiero sensoriale rafforza il legame tra scuola e comunit&agrave;. La pianificazione con approccio flessibile e multifunzionale dimostra che gli spazi urbani possono diventare ambienti misti di apprendimento, gioco, sport e socialit&agrave; se progettati con attenzione. Infine, si conferma la necessit&agrave; di un sostegno istituzionale stabile e di risorse adeguate per garantire che i beni rigenerati restino vivibili e valorizzati nel lungo periodo.\\n\\nArea characterization:\\nL&rsquo;area oggetto dell&rsquo;intervento si estende tra Piazzale Salsi, il giardino antistante la scuola primaria Micheli e la zona a nord di via Genova, fino a via Paradigna. Questo spazio urbano, attualmente frammentato e in parte disconnesso nel quartiere San Leonardo, funge da cerniera tra diverse funzioni urbane: edifici scolastici, spazi verdi e parchi commerciali (Euro?Torri e Centro?Torri). Il sito ospita gi&agrave; un patrimonio arboreo significativo con circa 116 alberi documentati ex?ante, oggi reinterpretati come &ldquo;Bosco Didattico&rdquo;. Lo spazio versa in uno stato di sotto-utilizzo e necessita di un nuovo disegno delle connessioni pedonali e ciclabili, di maggior accessibilit&agrave; e permeabilit&agrave; urbana.",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accessRights": {
+                "type": "Property",
+                "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "'https://uri=etsi=org/ngsi-ld/default-context/landingPage'": {
+                "type": "Property",
+                "value": "https://dashboard-dev.urbreath.tech/tools/nbs-registry/nbs-details/50",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/issued": {
+                "type": "Property",
+                "value": "2025-07-28T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/modified": {
+                "type": "Property",
+                "value": "2025-07-28T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/type": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/hasVersion": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accrualPeriodicity": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            }
+        },
+        "creDate": 1789562144.6301627,
+        "modDate": 1789562144.6301627,
+        "lastCorrelator": ""
+    },
+    {
+        "_id": {
+            "id": "urn:ngsi-ld:Dataset:urbreath:nbs:dataset:riqualificazione-del-parco-vilma-38418f1b4784-8",
+            "type": "https://uri.etsi.org/ngsi-ld/default-context/Dataset",
+            "servicePath": "/"
+        },
+        "attrNames": [
+            "http://purl.org/dc/terms/identifier",
+            "http://purl.org/dc/terms/title",
+            "https://uri.etsi.org/ngsi-ld/default-context/datasetDescription",
+            "http://purl.org/dc/terms/accessRights",
+            "'https://uri.etsi.org/ngsi-ld/default-context/landingPage'",
+            "http://purl.org/dc/terms/issued",
+            "http://purl.org/dc/terms/modified",
+            "http://purl.org/dc/terms/type",
+            "http://purl.org/dc/terms/hasVersion",
+            "http://purl.org/dc/terms/accrualPeriodicity"
+        ],
+        "attrs": {
+            "http://purl=org/dc/terms/identifier": {
+                "type": "Property",
+                "value": 65,
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/title": {
+                "type": "Property",
+                "value": "Riqualificazione del Parco Vilma Preti",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "https://uri=etsi=org/ngsi-ld/default-context/datasetDescription": {
+                "type": "Property",
+                "value": "Objective:\\nL&rsquo;intervento ha l&rsquo;obiettivo di riqualificare e potenziare le funzioni ecologiche, sociali e ricreative del Parco, migliorando l&rsquo;accessibilit&agrave;, il verde e le dotazioni presenti. Pur nascendo come compensazione ambientale per la realizzazione di un impianto agrivoltaico, il progetto si traduce in un beneficio concreto per il quartiere San Leonardo e la citt&agrave;. L&rsquo;intera opera &egrave; realizzata e finanziata da un soggetto privato, a titolo compensativo, senza oneri per l&rsquo;amministrazione comunale. Questo approccio dimostra come la collaborazione tra pubblico e privato possa generare interventi di qualit&agrave; a favore della collettivit&agrave;.\\n\\nChallenges:\\nTra le principali sfide c&rsquo;&egrave; l&rsquo;inserimento armonico delle nuove funzioni in un parco gi&agrave; strutturato e frequentato, con la necessit&agrave; di limitare disagi durante i lavori. &Egrave; inoltre importante garantire coerenza progettuale e una gestione efficace dell&rsquo;intervento, affinch&eacute; il valore della compensazione sia percepito dalla cittadinanza e sostenibile nel tempo.\\n\\nProblems:\\n- Climate action for adaptation, resilience and mitigation\\n- Green space, habitats and biodiversity\\n- Social justice, inequality and social cohesion\\n- Environmental quality, including air quality and waste management\\n- Regeneration, land use and urban development\\n\\nPotential impacts and benefits:\\nIl progetto porter&agrave; benefici ambientali, grazie all&rsquo;incremento del verde e alla riduzione dell&rsquo;isola di calore, e sociali, rafforzando l&rsquo;uso del parco da parte della comunit&agrave;. Le nuove dotazioni favoriranno l&rsquo;attivit&agrave; fisica, la socialit&agrave; e l&rsquo;inclusione, migliorando la vivibilit&agrave; urbana. Il parco sar&agrave; pi&ugrave; accogliente e sicuro, diventando un punto di riferimento ancora pi&ugrave; forte per il quartiere.\\n\\nLessons learnt:\\nIl progetto dimostra come un&rsquo;opera compensativa possa generare valore reale per la citt&agrave;, se ben integrata nelle strategie locali. La scelta del Parco ha permesso di agire su un&rsquo;area viva e partecipata, rafforzandone le potenzialit&agrave;. La collaborazione tra enti e la visione integrata dell&rsquo;intervento rappresentano un modello replicabile di rigenerazione urbana sostenibile.\\n\\nArea characterization:\\nIl Parco si trova nel quartiere San Leonardo, a nord del centro di Parma, in una zona urbana densamente abitata e ben servita. Si tratta di un&rsquo;area verde consolidata, frequentata quotidianamente da residenti di tutte le et&agrave; per attivit&agrave; sportive, ricreative e di socializzazione. Il parco si sviluppa su una superficie pianeggiante, con ampi prati, alberature mature, percorsi ciclopedonali e zone attrezzate. La sua posizione strategica lo rende un punto di riferimento importante per il quartiere e parte integrante della rete ecologica e sociale della citt&agrave;. L&rsquo;intervento di riqualificazione previsto, legato a misure di compensazione ambientale, punta a valorizzare ulteriormente il ruolo del parco come infrastruttura verde multifunzionale, al servizio della collettivit&agrave;.",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accessRights": {
+                "type": "Property",
+                "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "'https://uri=etsi=org/ngsi-ld/default-context/landingPage'": {
+                "type": "Property",
+                "value": "https://dashboard-dev.urbreath.tech/tools/nbs-registry/nbs-details/65",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/issued": {
+                "type": "Property",
+                "value": "2025-08-06T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/modified": {
+                "type": "Property",
+                "value": "2025-08-06T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/type": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/hasVersion": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accrualPeriodicity": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            }
+        },
+        "creDate": 1789562144.6301627,
+        "modDate": 1789562144.6301627,
+        "lastCorrelator": ""
+    },
+    {
+        "_id": {
+            "id": "urn:ngsi-ld:Dataset:urbreath:nbs:dataset:the-regeneration-of-vasilisis-faa7451dacca-8",
+            "type": "https://uri.etsi.org/ngsi-ld/default-context/Dataset",
+            "servicePath": "/"
+        },
+        "attrNames": [
+            "http://purl.org/dc/terms/identifier",
+            "http://purl.org/dc/terms/title",
+            "https://uri.etsi.org/ngsi-ld/default-context/datasetDescription",
+            "http://purl.org/dc/terms/accessRights",
+            "'https://uri.etsi.org/ngsi-ld/default-context/landingPage'",
+            "http://purl.org/dc/terms/issued",
+            "http://purl.org/dc/terms/modified",
+            "http://purl.org/dc/terms/type",
+            "http://purl.org/dc/terms/hasVersion",
+            "http://purl.org/dc/terms/accrualPeriodicity"
+        ],
+        "attrs": {
+            "http://purl=org/dc/terms/identifier": {
+                "type": "Property",
+                "value": 122,
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/title": {
+                "type": "Property",
+                "value": "The Regeneration of Vasilisis Olgas Avenue",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "https://uri=etsi=org/ngsi-ld/default-context/datasetDescription": {
+                "type": "Property",
+                "value": "Objective:\\nThe key objectives of the Regeneration of the Vasilisis Olgas Avenue are listed as following:\\n\\nTo create a continuous green and cooling corridor linking the Temple of Olympian Zeus, the Zappeion and the National Garden and complete the &ldquo;Great Archaeological Walk&rdquo; through central Athens (project vision and site role).\\n\\nTo reduce Urban Heat Island effects and improve microclimate by installing large-scale urban greening (native trees and shrubs), increasing shade and replacing hard surfaces with permeable pavements).\\n\\nTo enhance multimodal accessibility and public realm quality: widen pedestrian/cycle space, improve wayfinding to heritage sites, and upgrade seating/shaded resting areas while protecting transport access for trams/trolleys.\\n\\nTo protect and integrate archaeological assets through adaptive design that enables both preservation and public activation of heritage.\\n\\nTo strengthen social engagement and stewardship via Living Labs, co-creation sessions and digital e-participation tools so residents, stakeholders and businesses co-design the avenue&rsquo;s future.\\n\\nTo improve stormwater resilience through a new stormwater pipeline and permeable surfaces to reduce surface runoff and local flooding risk.\\n\\nChallenges:\\nThe main challenges the Regeneration of the Vasilisis Olgas Avenue aims at addressing are the following:\\n\\nTraffic & modal trade-offs &mdash; the avenue currently supports high volumes of motor vehicles, tourist coaches and service access. Deciding the degree of vehicle restriction (partial vs full pedestrianisation) is politically and socially contentious and requires careful traffic modelling and stakeholder negotiation.\\n\\nStakeholder alignment & perceptions &mdash; tourists, commuters, businesses and residents may have different priorities (mobility vs leisure vs access), so continuous engagement is required to avoid backlash. Recent local consultations on reopening vs pedestrianization show public opinion can be split.\\n\\nHeritage sensitivity & permitting &mdash; works run within an archaeologically rich area; design must avoid or adapt to fragile remains and respond to strict ministry controls. This complicates excavation, tree planting and underground works.\\n\\nConstruction staging in a busy centre &mdash; phasing works to avoid prolonged disruption to tourism, events and adjacent institutions (Zappeion, museums, government buildings) is operationally complex. Soil, subsurface constraints and stormwater engineering &mdash; installing new pipelines and permeable structures in a historic urban core requires detailed subsurface surveys and may hit utilities or archaeological layers. \\n\\nLong-term maintenance & funding &mdash; newly planted green infrastructure and permeable systems need committed maintenance budgets and defined institutional responsibility to avoid degradation after initial delivery.\\n\\nProblems:\\n- Coastal resilience and marine protection\\n- Cultural heritage and cultural diversity\\n- Climate action for adaptation, resilience and mitigation\\n\\nPotential impacts and benefits:\\nThe regeneration of Vasilisis Olgas Avenue is designed to generate multiple, interlinked benefits for Athens&mdash;environmental, cultural, social, and economic&mdash;by turning a historically significant but traffic-heavy corridor into a climate-resilient, green, and inclusive urban space, as introduced below:\\n\\nClimate & thermal comfort: measurable reduction in surface and near-surface air temperatures along the corridor (target: local daytime cooling in hottest months). Increased shade from the planned tree stock (158 trees) will lower peak daytime temperatures and improve pedestrian thermal comfort. \\n\\nBiodiversity & ecosystem services: introduction of native/non-invasive shrubs and trees will increase urban habitat connectivity, supporting pollinators and urban birdlife and creating a biodiversity corridor between major green spaces.\\n\\nHeritage activation & visitor experience: improving the public realm and wayfinding between archaeological sites will increase dwell time and the quality of visits to the Temple of Olympian Zeus, Zappeion and surrounding sites &mdash; supporting cultural tourism while protecting assets through managed access. \\n\\nStormwater & flood risk reduction: the new stormwater pipeline plus permeable areas will reduce surface runoff and local ponding during intense storms, lowering short-term flood risk for adjacent parks and sidewalks. Expected benefit: reduced peak runoff and increased infiltration capacity. \\n\\nSocial & economic wellbeing: better shaded public space, seating and accessible routes will increase local use by residents, support nearby businesses, and strengthen community ownership via Living Labs and co-design processes. \\n\\nModal shift: by prioritizing walking, cycling and public transport in the corridor design (while preserving essential public transport lanes), the project can reduce private car use on that axis.\\n\\nLessons learnt:\\nThe implementation process of the Vasilisis Olgas Avenue regeneration has provided valuable insights, as described below:\\n\\nStart stakeholder alignment early and keep it iterative.Co-creation must begin before design freeze. Athens shows co-creation debates (e.g., car access vs pedestrianisation) can become flashpoints &mdash; sustained dialogue, transparent traffic/impact modelling and visible pilot trials reduce conflict. \\n\\nIntegrate archaeology into the design process as a technical constraint and an asset.Treat archaeological findings not only as constraints but as activation opportunities (interpretation points, protective boardwalks, micro-exhibits). Early engagement with the Ministry of Culture streamlines approvals. \\n\\nPhase works to minimise disruption and demonstrate early wins.Deliver visible, high-impact elements first (shade trees, seating, temporary permeable paving) to build public support while larger underground works proceed. The Athens timeline (planting completed early, drainage later) mirrors this best practice.\\n\\nSecure long-term maintenance arrangements before installation.Green infrastructure needs budgets, monitoring and institutional ownership (city agency, parks department or concession). Include maintenance KPIs and community stewardship roles from the outset.\\n\\nUse pilot monitoring & digital engagement to show results.Combine microclimate sensors, biodiversity surveys and usage counters with e-participation dashboards to transparently report benefits and adapt management.\\n\\nDesign for resilience and climate extremes, not only normal conditions.Select planting palettes and soil volumes that tolerate heat and drought (native, low-water species listed in the project), and size permeable systems to cope with intense rainfall events that are becoming more frequent.\\n\\nArea characterization:\\nThe Athens pilot focuses on the regeneration of Vasilisis Olgas Avenue, one of the city&rsquo;s most emblematic urban axes, located at the heart of the Greek capital. Spanning 28,360 m&sup2;, the area connects three of Athens&rsquo; most important historical and cultural landmarks &mdash; the Temple of Olympian Zeus, the Zappeion, and the National Garden &mdash; and serves as the final missing link in the city&rsquo;s &ldquo;Great Archaeological Walk,&rdquo; uniting key heritage sites from Kerameikos to the Panathenaic Stadium.\\n\\nToday, the avenue is characterized by dense urban fabric, limited green space, heavy motorized traffic, and insufficient stormwater drainage. Despite its strategic central location and touristic significance, the area faces challenges of overheating, air pollution, low pedestrian accessibility, and minimal local community engagement. At the same time, the site&rsquo;s archaeological sensitivity calls for an adaptive design that balances heritage protection with urban sustainability.",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accessRights": {
+                "type": "Property",
+                "value": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "'https://uri=etsi=org/ngsi-ld/default-context/landingPage'": {
+                "type": "Property",
+                "value": "https://dashboard-dev.urbreath.tech/tools/nbs-registry/nbs-details/122",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/issued": {
+                "type": "Property",
+                "value": "2025-10-30T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/modified": {
+                "type": "Property",
+                "value": "2025-10-30T00:00:00.000Z",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/type": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/hasVersion": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            },
+            "http://purl=org/dc/terms/accrualPeriodicity": {
+                "type": "Property",
+                "value": "",
+                "creDate": 1789562144.6301627,
+                "modDate": 1789562144.6301627,
+                "mdNames": []
+            }
+        },
+        "creDate": 1789562144.6301627,
+        "modDate": 1789562144.6301627,
+        "lastCorrelator": ""
+    }
+]
