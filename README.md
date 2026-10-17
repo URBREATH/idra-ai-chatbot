@@ -212,11 +212,8 @@ with HTTP `503`, so monitors and orchestrators can react to the status code.
 | **Dependencies** | MongoDB, ChromaDB, Ollama, Python (or Anaconda), Docker, Orion, NGSI Broker  |
 | **Contacts** | marco.dauria@eng.it |
 
-*(Add the project's license here — e.g. Apache-2.0 or EUPL, per the URBREATH project's conventions.)*
-
-
 
 curl -s -w '\nHTTP %{http_code}\n' -X POST http://localhost:3000/chat -H 'Content-Type: application/json' -H "Authorization: Bearer $ADMIN_TOKEN" -H 'X-Tenant-Id: default-tenant' -d '{"message":"have you got some datasets related to Cluj-Napoca?"}'
 
 ## License
-This project is distributed under **Apache-2.0** license.
+This project is distributed under **GNU Affero General Public License v3.0** (AGPL-3.0) license. See [LICENSE](LICENSE)
