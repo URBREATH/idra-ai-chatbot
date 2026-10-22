@@ -43,13 +43,19 @@ DISTANCE_THRESHOLD = float(os.getenv("DISTANCE_THRESHOLD", "0.55"))
 DISTANCE_THRESHOLD_STEP = float(os.getenv("DISTANCE_THRESHOLD_STEP", "0.10"))
 DISTANCE_THRESHOLD_MAX = float(os.getenv("DISTANCE_THRESHOLD_MAX", "0.75"))
 LOG_TOP_FOUND = int(os.getenv("LOG_TOP_FOUND", 10))
+MAX_N_RESULTS = int(os.getenv("MAX_N_RESULTS", 100))
 NBS_QUERY_EXPANSION = os.getenv("NBS_QUERY_EXPANSION", "true").lower() == "true"   # [NEW]
-# [NEW] Limiti per non superare la finestra di contesto di Ollama (oltre, Ollama
-# taglia l'INIZIO del prompt, cioe' proprio le istruzioni).
+# Limiti per non superare la finestra di contesto di Ollama
 MAX_RESOURCES = int(os.getenv("MAX_RESOURCES", 6))            # risorse distinte passate al modello
-MAX_DATASETS = int(os.getenv("MAX_DATASETS", 8))              # [NEW] limite separato per i dataset
+MAX_DATASETS = int(os.getenv("MAX_DATASETS", 8))              # limite separato per i dataset
 MAX_DOC_CHARS = int(os.getenv("MAX_DOC_CHARS", 1200))         # caratteri per risorsa
 MAX_HISTORY_CHARS = int(os.getenv("MAX_HISTORY_CHARS", 3000)) # caratteri di cronologia
+
+LANGUAGE_CONFIDENCE_THRESHOLD = float(os.getenv("LANGUAGE_CONFIDENCE_THRESHOLD", "0.70"))
+LANGUAGE_CONFIDENCE_MARGIN = float(os.getenv("LANGUAGE_CONFIDENCE_MARGIN", "0.20"))
+LANGUAGE_DETECTION_TIMEOUT = float(os.getenv("LANGUAGE_DETECTION_TIMEOUT", "10.0"))
+
+_LANGUAGE_DETECTOR = LanguageDetectorBuilder.from_all_languages().build()
 
 
 def _log_found_resources(documents, metadatas, distances) -> None:
@@ -283,24 +289,6 @@ def filter_by_format(resources: list, fmt: str) -> str:
         lines.append(f"- {r.get('title') or 'Untitled'} ({', '.join(_formats_of(r))}){link}")
     return f"From my previous answer, these resources are available in {fmt}:\n" + "\n".join(lines)
 
-def _build_no_result_prompt(message: str, conversation_context: str = "") -> str:
-    parts = [NO_RESULT_INSTRUCTIONS]
-    if conversation_context:
-        parts.append("\nPrevious conversation:")
-        parts.append(conversation_context)
-    parts.append(f"\nUser's question: {message}")
-    parts.append(                                                     # [CHANGED]
-        "\nIMPORTANT: If the user's question refers to items already listed in the previous "
-        "conversation (words like 'these', 'those', 'the second one'), answer using ONLY those "
-        "items, with their titles and links copied exactly as written there. If the user asks "
-        "for OTHER or NEW resources, say that this search did not find other matching "
-        "resources, and give the suggestions to broaden or rephrase the search. Never write "
-        "a title or a link that does not appear in the previous conversation. "
-        "Reply in the user's language."
-    )
-    parts.append("\nAnswer:")
-    return "\n".join(parts)
-
 
 def build_prompt(message, retrieval_context, conversation_context=None,
                  relaxed=False, system=SYSTEM_INSTRUCTIONS, lang_code: str | None = None) -> str:      # <-- system scelto dall'esterno
@@ -330,24 +318,8 @@ def build_prompt(message, retrieval_context, conversation_context=None,
     prompt_parts.append("")
     prompt_parts.append("Answer:")
     return "\n".join(prompt_parts)
-logging.getLogger("app").setLevel(logging.DEBUG)  # <-- adatta 'app' al package radice
-if not logging.getLogger().handlers:
-    _h = logging.StreamHandler()
-    _h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
-    logging.getLogger().addHandler(_h)
-logger = logging.getLogger(__name__)
 
-TOP_K = int(os.getenv("TOP_K", -1))
-DISTANCE_THRESHOLD = float(os.getenv("DISTANCE_THRESHOLD", "0.55"))
-DISTANCE_THRESHOLD_STEP = float(os.getenv("DISTANCE_THRESHOLD_STEP", "0.10"))
-DISTANCE_THRESHOLD_MAX = float(os.getenv("DISTANCE_THRESHOLD_MAX", "0.75"))
-LOG_TOP_FOUND = int(os.getenv("LOG_TOP_FOUND", 100))
-MAX_N_RESULTS = int(os.getenv("MAX_N_RESULTS", 100))
-LANGUAGE_CONFIDENCE_THRESHOLD = float(os.getenv("LANGUAGE_CONFIDENCE_THRESHOLD", "0.70"))
-LANGUAGE_CONFIDENCE_MARGIN = float(os.getenv("LANGUAGE_CONFIDENCE_MARGIN", "0.20"))
-LANGUAGE_DETECTION_TIMEOUT = float(os.getenv("LANGUAGE_DETECTION_TIMEOUT", "10.0"))
 
-_LANGUAGE_DETECTOR = LanguageDetectorBuilder.from_all_languages().build()
 
 _N_RESULTS_ANALYSIS_PROMPT = (
     "You are a query analyser. Given the user query below, estimate how many "
@@ -470,30 +442,29 @@ def _language_directive(lang_code: str | None) -> str:
     )
 
 
-def _log_found_resources(documents, metadatas, distances) -> None:
-    n_show = min(MAX_N_RESULTS, len(documents))
-    logger.debug("Prime %d risorse trovate (soglia base=%.3f, tetto=%.3f):",
-                 n_show, DISTANCE_THRESHOLD, DISTANCE_THRESHOLD_MAX)
-    for rank in range(n_show):
-        meta = metadatas[rank] or {}
-        dist = distances[rank]
-        label = meta.get("title") or meta.get("dataset_id") or "(senza titolo)"
-        entro = "OK " if dist <= DISTANCE_THRESHOLD else "  -"
-        logger.debug("  #%2d  dist=%.4f  [%s]  %s", rank + 1, dist, entro, label)
-
-
-def _build_no_result_prompt(message: str, conversation_context: str = "", lang_code: str | None = None) -> "tuple[str, str]":
-    system = _language_directive(lang_code) + NO_RESULT_INSTRUCTIONS
+def _build_no_result_prompt(
+    message: str,
+    conversation_context: str = "",
+    lang_code: str | None = None,
+) -> "tuple[str, str]":
+    system = (_language_directive(lang_code) + NO_RESULT_INSTRUCTIONS).strip()
     user_parts: list[str] = []
     if conversation_context:
         user_parts.append("Previous conversation:")
         user_parts.append(conversation_context)
+        user_parts.append("")
     user_parts.append(f"User's question: {message}")
+    user_parts.append("")
     user_parts.append(
         "IMPORTANT: If the user's question refers to items already listed in the previous "
-        "conversation (words like 'these', 'those', 'the second one'), answer using that "
-        "conversation, not a new search."
+        "conversation (words like 'these', 'those', 'the second one'), answer using ONLY those "
+        "items, with their titles and links copied exactly as written there. If the user asks "
+        "for OTHER or NEW resources, say that this search did not find other matching "
+        "resources, and give the suggestions to broaden or rephrase the search. Never write "
+        "a title or a link that does not appear in the previous conversation."
     )
+    user_parts.append("")
+    user_parts.append("Answer:")
     return system, "\n".join(user_parts)
 
 
@@ -565,12 +536,12 @@ async def generate_answer(
             return []
 
     async def _no_result() -> "ChatResponse":
-        prompt = _build_no_result_prompt(message, conversation_context)
+        system_nr, user_nr = _build_no_result_prompt(message, conversation_context, lang_code=lang_code)
         try:
             if model:
-                answer = await ollama_client.generate_completion(prompt, model=model, temperature=0.0, system=system)
+                answer = await ollama_client.generate_completion(user_nr, model=model, temperature=0.0, system=system_nr)
             else:
-                answer = await ollama_client.generate_completion(prompt, temperature=0.0, system=system)
+                answer = await ollama_client.generate_completion(user_nr, temperature=0.0, system=system_nr)
         except Exception as e:
             logger.debug(f"No-result generation failed, using fallback: {e}")
             answer = NO_ALTERNATIVE_MESSAGE
@@ -589,11 +560,16 @@ async def generate_answer(
             logger.debug("FORMAT FILTER %s on %d previous resources", fmt, len(previous))
             return await _respond(filter_by_format(previous, fmt), [])
 
-    search_text = message
-    if conversation_context:
-        search_text = await rewrite_query(message, conversation_context, model=model)
+    # Rewrite the query into a clean English search string.
+    # When there is conversation history, the rewrite also resolves references and
+    # positive-rephrases rejections. Without history, it still normalises the language
+    # so that non-English queries embed closer to the English catalog content.
+    search_text = await rewrite_query(message, conversation_context, model=model)
 
-    data_request = asks_for_datasets(search_text)                    # [NEW]
+    # NBS guard: activate NBS mode only when the message asks how to SOLVE a problem
+    # and does NOT explicitly request data/datasets from either the rewritten or the
+    # original message (prevents "recommend me a dataset" from entering NBS mode).
+    data_request = asks_for_datasets(search_text) or asks_for_datasets(message)   # [CHANGED]
     nbs = (is_nbs_question(message) or is_nbs_question(search_text)) and not data_request   # [CHANGED]
 
     m = " " + message.lower() + " "

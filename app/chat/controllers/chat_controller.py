@@ -86,6 +86,7 @@ async def get_conversation_history(
     # Get conversation from MongoDB
     conversation = await conversation_services.get_conversation(
         conversation_id=conversation_id,
+        user_id=user_id,
         tenant_id=tenant_id,
     )
     
@@ -111,3 +112,34 @@ async def get_conversation_history(
         conversationId=conversation_id,
         messages=messages,
     )
+
+
+@router.delete("/chat/{conversation_id}", status_code=200)
+async def delete_conversation(
+    conversation_id: str,
+    x_tenant_id: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+):
+    """
+    Delete a conversation and all its messages (GDPR Art. 17 – right to erasure).
+    Only the conversation owner can delete it.
+    Returns 404 if the conversation does not exist or belongs to another user.
+    """
+    from fastapi import HTTPException
+    tenant_id = resolve_tenant(x_tenant_id)
+    user_id = require_admin_authorization(authorization)
+
+    deleted = await conversation_services.delete_conversation(
+        conversation_id=conversation_id,
+        user_id=user_id,
+        tenant_id=tenant_id,
+    )
+
+    if deleted == 0:
+        raise HTTPException(
+            status_code=404,
+            detail="Conversation not found or access denied",
+        )
+
+    return {"deleted": deleted, "conversationId": conversation_id}
+

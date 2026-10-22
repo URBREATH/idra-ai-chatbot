@@ -108,10 +108,18 @@
 * [x] Context injection
 * [x] Conversation memory
 * [x] No-result workflow
+* [x] Prompt engineering refinement:
+  * **System Instructions (Catalog/Data)**: vincoli anti-allucinazione rafforzati (link consentiti solo dal contesto), estrazione esplicita di formati/licenze e output formattato a elenco puntato.
+  * **NBS Prompt Alignment**: risolta discrepanza su word-count (150-200 parole uniformato su `NBS_INSTRUCTIONS` e `NBS_DECISION_REMINDER`), decisione esplicita `RELEVANT:` e link inline obbligatori.
+  * **Query Rewriter (`_REWRITE_PROMPT`)**: normalizzazione in inglese per embedding ChromaDB, inclusione sinonimi open data e rephrasing positivo dei vincoli (rimozione negazioni).
+  * **No-Result Architecture**: prompt unificato con separazione system/user per API chat Ollama, divieto link inventati e recupero coerente di entità dalla cronologia.
+  * **Language Preservation**: direttiva di lingua (`_language_directive`) in testa al prompt di sistema per garantire risposte sempre nella lingua della domanda originale.
 
 ### Acceptance Criteria
 
-* Hallucination-safe responses
+* Hallucination-safe responses (zero link inventati)
+* Strict adherence to word count and resource constraints
+* Consistent response language matching user input
 
 ---
 

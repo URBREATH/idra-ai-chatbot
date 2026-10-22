@@ -198,3 +198,36 @@ async def delete_user_conversations(user_id: str, tenant_id: str) -> int:
 
     logger.info(f"Deleted {result.deleted_count} messages for user {user_id}")
     return result.deleted_count
+
+
+async def delete_conversation(
+    conversation_id: str,
+    user_id: str,
+    tenant_id: str,
+) -> int:
+    """
+    Delete all messages of a single conversation (GDPR Art. 17 – right to erasure).
+    The userId and tenantId filters ensure a user cannot delete another user's data.
+
+    Args:
+        conversation_id: UUID of the conversation to delete
+        user_id: Keycloak user ID (ownership check)
+        tenant_id: Tenant identifier (isolation check)
+
+    Returns:
+        Number of documents deleted (0 means not found or access denied)
+    """
+    db = get_database()
+    collection = db[CONVERSATION_COLLECTION]
+
+    result = await collection.delete_many({
+        "conversationId": conversation_id,
+        "userId": user_id,
+        "tenantId": tenant_id,
+    })
+
+    logger.info(
+        "Deleted %d messages for conversationId=%s user=%s",
+        result.deleted_count, conversation_id, user_id,
+    )
+    return result.deleted_count

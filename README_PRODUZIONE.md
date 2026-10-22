@@ -233,9 +233,7 @@ pytest tests/test_health.py -v
 curl http://localhost:3000/health
 
 # Chat (endpoint placeholder)
-curl -X POST http://localhost:3000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "test"}'
+curl -X POST http://localhost:3000/chat -H "Content-Type: application/json" -d '{"message": "test"}'
 ```
 
 ### 9.2 Verifica Modelli

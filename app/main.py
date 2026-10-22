@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from pydantic_settings import BaseSettings
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import logging
 import structlog
 
@@ -15,6 +15,7 @@ import httpx
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 from starlette.middleware.cors import CORSMiddleware
+from app.mongodb.client import get_database
 
 load_dotenv()
 
@@ -55,6 +56,15 @@ async def lifespan(_: FastAPI):
     logger.info("Initializing conversation history indexes...")
     await conversation_repositories.initialize_conversation_indexes()
     logger.info("Conversation indexes initialized successfully")
+
+    # TTL index for chat_feedback collection (90-day retention, GDPR).
+    try:
+        db = get_database()
+        await db["chat_feedback"].create_index("expiresAt", expireAfterSeconds=0)
+        logger.info("chat_feedback TTL index initialized")
+    except Exception as exc:
+        logger.warning("chat_feedback index init failed", error=str(exc))
+
     yield
 
 
@@ -64,9 +74,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+cors_origins_env = os.getenv("CORS_ORIGINS", "*")
+allow_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],      # per i test in locale va bene tutto; in produzione restringi
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],      # necessario per far passare Authorization e X-Tenant-Id
@@ -179,11 +192,31 @@ class FeedbackRequest(BaseModel):
 
 @app.post("/chat/feedback")
 async def submit_feedback(request: FeedbackRequest):
+    """
+    Record user feedback on a chat answer.
+    Increments in-memory counters (exposed via /metrics) AND persists
+    the rating to MongoDB with a 90-day TTL for GDPR compliance.
+    """
     if request.rating == "positive":
         _metrics["feedback_positive"] += 1
     elif request.rating == "negative":
         _metrics["feedback_negative"] += 1
     logger.info("feedback_received", conversation_id=request.conversationId, rating=request.rating)
+
+    # Persist to MongoDB (collection: chat_feedback, TTL: 90 days)
+    try:
+        db = get_database()
+        now = datetime.now(timezone.utc)
+        await db["chat_feedback"].insert_one({
+            "conversationId": request.conversationId,
+            "rating": request.rating,
+            "createdAt": now,
+            "expiresAt": now + timedelta(days=90),
+        })
+    except Exception as exc:
+        # Non-blocking: in-memory counter already updated; just log the failure.
+        logger.warning("feedback_persist_failed", error=str(exc))
+
     return {"status": "received"}
 
 

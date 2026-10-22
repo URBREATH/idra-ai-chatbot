@@ -127,3 +127,20 @@ async def get_context_for_llm(
         context_lines.append(f"{role_label}: {msg['content']}")
 
     return "\n".join(context_lines)
+
+
+async def delete_conversation(
+    conversation_id: str,
+    user_id: str,
+    tenant_id: str,
+) -> int:
+    """
+    Delete all messages of a single conversation.
+    Ownership is enforced: only the owner (userId + tenantId) can delete their data.
+    Returns the number of deleted documents (0 means not found or not owned by this user).
+    """
+    return await repositories.delete_conversation(
+        conversation_id=conversation_id,
+        user_id=user_id,
+        tenant_id=tenant_id,
+    )
