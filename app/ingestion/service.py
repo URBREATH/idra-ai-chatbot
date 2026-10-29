@@ -6,9 +6,9 @@ from datetime import datetime
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
-from dotenv import load_dotenv
 
-from .payload_builder import extract_attrs
+from .payload_builder import extract_attrs, build_payload
+from .chunker import chunk_payload
 from ..config.config import FORMAT_CANON
 from ..instructions.nbs_instructions import is_nbs_resource, extract_problems_section
 from ..mongodb.repositories import (
@@ -136,11 +136,8 @@ _status: IngestionStatus = IngestionStatus()
 def get_ingestion_status() -> IngestionStatus:
     return _status
 
-
 async def _process_dataset(ds: Dict[str, Any], tenant_id: str,
-                           distribution_info: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:  # <<< CHANGE 2
-    from .payload_builder import build_payload
-    from .chunker import chunk_payload
+                           distribution_info: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
 
     dataset_id = ds.get("_id", {}).get("id") or str(uuid.uuid4())
     attrs = extract_attrs(ds)
@@ -186,7 +183,7 @@ async def _process_dataset(ds: Dict[str, Any], tenant_id: str,
     return results
 
 
-async def _delete_from_collection(collection, dataset_ids: List[str]) -> None:
+def _delete_from_collection(collection, dataset_ids: List[str]) -> None:
     delete_documents_from_collection(collection, dataset_ids)
 
 
@@ -218,7 +215,7 @@ async def _run_incremental(tenant_id: str, full_reindex: bool = False) -> Dict[s
     if full_reindex:
         dataset_ids = await get_all_dataset_ids(tenant_id)
         logger.debug(f"[full_reindex] deleting {len(dataset_ids)} entities")
-        await _delete_from_collection(collection, dataset_ids)
+        _delete_from_collection(collection, dataset_ids)
         logger.debug(f"[full_reindex] records after deletion: {collection.count()}")
 
     effective_since = datetime.min if full_reindex else (_status.last_ingestion or datetime.min)
@@ -226,7 +223,7 @@ async def _run_incremental(tenant_id: str, full_reindex: bool = False) -> Dict[s
     new_datasets = await get_datasets_since(tenant_id, effective_since)
     deleted_ids = [] if full_reindex else await get_deleted_dataset_ids(tenant_id, effective_since)
     if deleted_ids:
-        await _delete_from_collection(collection, deleted_ids)
+        _delete_from_collection(collection, deleted_ids)
         logger.debug(f"[ingest] deleted {len(deleted_ids)} removed at source")
 
     distribution_info = build_distribution_info(new_datasets)
@@ -243,7 +240,7 @@ async def _run_incremental(tenant_id: str, full_reindex: bool = False) -> Dict[s
     batch_num = 0
     for i, ds in enumerate(entities_to_index, 1):
         try:
-            chunks = await _process_dataset(ds, tenant_id, distribution_info)  # <<< CHANGE 2
+            chunks = await _process_dataset(ds, tenant_id, distribution_info)
             buffer.extend(chunks)
             has_text = all(bool(c.get("document")) for c in chunks)
             logger.debug(f"[{i}/{len(entities_to_index)}] {ds.get('_id', {}).get('id')}: "

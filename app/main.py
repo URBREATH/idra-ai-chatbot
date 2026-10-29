@@ -16,6 +16,7 @@ from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 from starlette.middleware.cors import CORSMiddleware
 from app.mongodb.client import get_database
+from app.chat.dto.models import ChatRequest, ChatResponse, SourceReference
 
 load_dotenv()
 

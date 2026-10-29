@@ -26,38 +26,8 @@ def is_nbs_question(message: str) -> bool:
     return any(w in m for w in _NBS_INTENT)
 
 
-def expand_problem(message: str) -> List[str]:
-    """Solution keywords relevant to the problem mentioned in the message."""
-    m = message.lower()
-    out: List[str] = []
-    for key, terms in PROBLEM_TO_NBS.items():
-        if key in m:
-            for t in terms:
-                if t not in out:
-                    out.append(t)
-    return out
-
-_FILLER = (
-    "hello", "hi", "i live in", "i am", "could you", "can you", "please",
-    "i would like", "which", "what", "how can i", "how do i", "how to",
-    "do you have", "there is", "there are", "affected by", "the effects of",
-    "ciao", "vivo a", "vorrei", "quale", "quali", "come posso", "come faccio",
-)
 
 
-def distill_query(message: str) -> str:
-    q = " " + str(message or "").lower() + " "
-    for p in _FILLER:
-        q = q.replace(" " + p + " ", " ")
-    q = re.sub(r"[^a-z0-9àèéìòù\s-]", " ", q)
-    q = re.sub(r"\s+", " ", q).strip()
-    return q or str(message or "")
-
-
-def build_nbs_query(message: str) -> str:
-    base = distill_query(message)
-    extra = expand_problem(message)
-    return (base + " " + " ".join(extra)).strip()
 
 
 _SECTION_HEADERS = (

@@ -30,9 +30,16 @@ def assemble_context(
 
         # Blocco di contesto ESPLICITO: campi dai metadati + testo semantico.
         title = metadata.get("title") or dataset_id
+        description = metadata.get("description") or (str(document).strip() if document else None)
+        problems = metadata.get("nbs_problems")
+        theme = metadata.get("theme")
+        keywords = metadata.get("keywords")
         block = "\n".join(filter(None, [
             f"Title: {title}",
-            f"Description: {metadata.get('description')}" if metadata.get("description") else None,
+            f"Description: {description}" if description else None,
+            f"Problems: {problems}" if problems else None,
+            f"Theme: {theme}" if theme else None,
+            f"Keywords: {keywords}" if keywords else None,
             f"Format: {metadata.get('format')}" if metadata.get("format") else None,
             f"License: {metadata.get('license')}" if metadata.get("license") else None,
             f"Publisher: {metadata.get('publisher')}" if metadata.get("publisher") else None,

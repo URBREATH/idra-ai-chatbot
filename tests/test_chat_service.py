@@ -160,20 +160,6 @@ def test_spanish_prompt_overrides_english_context_language():
 
 
 @pytest.mark.asyncio
-async def test_determine_n_results_uses_selected_model():
-    from app.chat.services.chat_service import _determine_n_results
-
-    with patch(
-        "app.ollama.client.generate_completion",
-        new=AsyncMock(return_value="12"),
-    ) as mock_llm:
-        result = await _determine_n_results("Mostrami dati ambientali", model="qwen3.5:4b")
-
-    assert result == 12
-    assert mock_llm.await_args.kwargs["model"] == "qwen3.5:4b"
-
-
-@pytest.mark.asyncio
 async def test_generate_answer_returns_response_with_sources_and_conversation_id():
     mock_collection = MagicMock()
     mock_collection.query.return_value = {
@@ -198,7 +184,7 @@ async def test_generate_answer_returns_response_with_sources_and_conversation_id
                         tenant_id="tenant_a",
                     )
 
-    assert response.answer == "Based on the datasets, air quality shows anomalies."
+    assert response.answer.startswith("Based on the datasets, air quality shows anomalies.")
     assert response.conversationId is not None
     assert len(response.sources) == 2
     assert response.sources[0].title == "NO2 Air Quality"
@@ -213,7 +199,7 @@ async def test_generate_answer_no_result_workflow_uses_spanish_prompt():
 
     with patch("app.chroma.client.get_tenant_collection", return_value=mock_collection):
         with patch("app.ollama.client.generate_embedding", new=AsyncMock(return_value=[0.1] * 1024)) as mock_embed:
-            with patch("app.ollama.client.generate_completion", new=AsyncMock(side_effect=["10", "No encontré recursos."])) as mock_llm:
+            with patch("app.ollama.client.generate_completion", new=AsyncMock(return_value="No encontré recursos.")) as mock_llm:
                 from app.chat.services.chat_service import generate_answer
 
                 response = await generate_answer(
@@ -226,8 +212,8 @@ async def test_generate_answer_no_result_workflow_uses_spanish_prompt():
     assert response.sources == []
     assert response.conversationId is not None
     mock_embed.assert_awaited_once()
-    assert mock_llm.await_count == 2
-    no_result_call = mock_llm.await_args_list[1]
+    assert mock_llm.await_count == 1
+    no_result_call = mock_llm.await_args_list[0]
     assert 'ISO 639-1 code "es"' in no_result_call.kwargs["system"]
 
 
@@ -235,7 +221,7 @@ async def test_generate_answer_no_result_workflow_uses_spanish_prompt():
 async def test_generate_answer_does_not_leak_instructions_when_no_result_llm_fails():
     with patch("app.chat.services.chat_service.embed_query", new=AsyncMock(return_value=[])):
         with patch("app.ollama.client.generate_completion", new=AsyncMock(side_effect=RuntimeError("offline"))):
-            from app.chat.services.chat_service import generate_answer
+            from app.chat.services.chat_service import generate_answer, NO_ALTERNATIVE_MESSAGE
 
             response = await generate_answer(
                 message="¿Qué datos hay sobre tráfico?",
@@ -243,7 +229,7 @@ async def test_generate_answer_does_not_leak_instructions_when_no_result_llm_fai
                 tenant_id="tenant_a",
             )
 
-    assert response.answer == "Unable to generate a response at this time."
+    assert response.answer == NO_ALTERNATIVE_MESSAGE
     assert "You are an assistant" not in response.answer
 
 
@@ -289,24 +275,27 @@ async def test_generate_answer_uses_temperature_zero_for_determinism():
 
 @pytest.mark.asyncio
 async def test_generate_answer_injects_conversation_context_in_prompt():
-    with patch("app.chat.services.chat_service.conversation_services.get_context_for_llm", new=AsyncMock(return_value="User: hello\nAssistant: hi")):
-        with patch("app.chat.services.chat_service.embed_query", new=AsyncMock(return_value=[0.2] * 4)):
-            with patch("app.chat.services.chat_service.vector_search", return_value={
-                "documents": [["dataset chunk"]],
-                "metadatas": [[{"dataset_id": "ds1", "title": "Dataset 1", "publisher": "EU", "url": "https://example.org"}]],
-                "distances": [[0.1]],
-            }):
-                with patch("app.chat.services.chat_service.rerank", return_value=[0]):
-                    with patch("app.chat.services.chat_service.assemble_context", return_value=("Dataset 1 context", [])):
-                        with patch("app.ollama.client.generate_completion", new=AsyncMock(return_value="ok")) as mock_llm:
-                            from app.chat.services.chat_service import generate_answer
+    with patch("app.chat.services.chat_service.conversation_services.get_context_for_llm", new=AsyncMock(return_value="User: hello\nAssistant: hi")), \
+         patch("app.chat.services.chat_service.conversation_services.append_user_message", new=AsyncMock()), \
+         patch("app.chat.services.chat_service.conversation_services.append_assistant_message", new=AsyncMock()), \
+         patch("app.chat.services.chat_service.conversation_services.get_last_sources", new=AsyncMock(return_value=[])), \
+         patch("app.chat.services.chat_service.embed_query", new=AsyncMock(return_value=[0.2] * 4)), \
+         patch("app.chat.services.chat_service.vector_search", return_value={
+             "documents": [["dataset chunk"]],
+             "metadatas": [[{"dataset_id": "ds1", "title": "Dataset 1", "publisher": "EU", "url": "https://example.org"}]],
+             "distances": [[0.1]],
+         }), \
+         patch("app.chat.services.chat_service.rerank", return_value=[0]), \
+         patch("app.chat.services.chat_service.assemble_context", return_value=("Dataset 1 context", [])), \
+         patch("app.ollama.client.generate_completion", new=AsyncMock(return_value="ok")) as mock_llm:
+        from app.chat.services.chat_service import generate_answer
 
-                            await generate_answer(
-                                message="next question",
-                                conversation_id="conv-1",
-                                tenant_id="tenant-a",
-                                user_id="user-1",
-                            )
+        await generate_answer(
+            message="next question",
+            conversation_id="conv-1",
+            tenant_id="tenant-a",
+            user_id="user-1",
+        )
 
     prompt_arg = mock_llm.await_args.args[0]
     assert "Previous conversation:" in prompt_arg

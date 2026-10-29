@@ -34,16 +34,9 @@ async def chat_endpoint(
     conversation_id = request.conversationId or str(uuid.uuid4())
     user_id = request.userId or str(uuid.uuid4())
 
-    
-    # Save user message to history
-    await conversation_services.append_user_message(
-        conversation_id=conversation_id,
-        tenant_id=tenant_id,
-        user_id=user_id,
-        message_content=request.message,
-    )
-    
-    # Generate answer (with conversation context)
+    # generate_answer() already persists both user and assistant messages
+    # internally (via append_user_message and _respond), so we must NOT
+    # save them here as well — that would duplicate every message.
     response = await generate_answer(
         message=request.message,
         conversation_id=conversation_id,
@@ -51,15 +44,7 @@ async def chat_endpoint(
         user_id=user_id,
         model=request.model,
     )
-    
-    # Save assistant response to history
-    await conversation_services.append_assistant_message(
-        conversation_id=conversation_id,
-        tenant_id=tenant_id,
-        user_id=user_id,
-        message_content=response.answer,
-    )
-    
+
     # Ensure response includes conversation ID
     response.conversationId = conversation_id
     return response

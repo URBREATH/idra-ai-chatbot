@@ -83,6 +83,5 @@ async def build_payload(dataset: Dict[str, Any]) -> str:
         document = " | ".join(tech_parts).strip() or "N/A"
         logger.debug(f"[payload] {dataset_id}: nessuna semantica -> fallback sugli attributi")
 
-    #document = _truncate(document, MAX_CHARS)
     logger.debug(f"[payload] {dataset_id}: document {len(document)} char")
     return document

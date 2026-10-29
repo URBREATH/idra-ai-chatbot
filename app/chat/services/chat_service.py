@@ -18,24 +18,15 @@ from app.retrieval.reranker.reranker import rerank
 from app.retrieval.context.context_assembler import assemble_context
 from app.ollama import client as ollama_client
 from app.conversation import services as conversation_services
-from app.config.config import SYSTEM_INSTRUCTIONS, NO_RESULT_INSTRUCTIONS, RELAXED_NOTICE, _NBS_INTENT, NBS_INSTRUCTIONS
-from app.config.config import PROBLEM_TO_NBS                 # [NEW] per l'espansione della query NBS
-from app.config.config import FORMAT_CANON                   # [NEW] per il filtro sul formato
-from app.config.config import LINK_REMINDER                  # [NEW] promemoria dopo il contesto
-from app.config.config import NBS_DECISION_REMINDER          # [NEW] decisione esplicita sulle NBS
-from app.config.config import _REFERENCE_MARKERS, _REACTION_MARKERS   # [NEW] riferimenti e rifiuti
-
-logger = logging.getLogger(__name__)
+from app.config.config import (
+    SYSTEM_INSTRUCTIONS, NO_RESULT_INSTRUCTIONS, RELAXED_NOTICE, NBS_INSTRUCTIONS,
+    PROBLEM_TO_NBS, FORMAT_CANON, LINK_REMINDER, NBS_DECISION_REMINDER,
+    _NBS_INTENT, _REFERENCE_MARKERS, _REACTION_MARKERS,
+)
+from app.instructions.nbs_instructions import is_nbs_question
 
 load_dotenv()
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    force=True,          # <-- rimuove gli handler esistenti e reimposta i tuoi
-)
-logging.getLogger("app").setLevel(logging.DEBUG)   # i tuoi moduli restano a DEBUG
 logger = logging.getLogger(__name__)
 
 TOP_K = int(os.getenv("TOP_K", 10))
@@ -199,10 +190,7 @@ def ensure_links(answer: str, resources: list, fallback: list | None = None) -> 
     return answer.rstrip() + "\n\nLinks:\n" + "\n".join(lines)
 
 
-def is_nbs_question(message: str) -> bool:
-    """True if the question asks how to SOLVE a problem (NBS mode), not just to list data."""
-    m = str(message or "").lower()
-    return any(w in m for w in _NBS_INTENT)
+# is_nbs_question is imported from app.instructions.nbs_instructions
 
 
 _DATA_WORDS = {"dataset", "datasets", "data", "dati"}
@@ -290,16 +278,29 @@ def filter_by_format(resources: list, fmt: str) -> str:
     return f"From my previous answer, these resources are available in {fmt}:\n" + "\n".join(lines)
 
 
-def build_prompt(message, retrieval_context, conversation_context=None,
-                 relaxed=False, system=SYSTEM_INSTRUCTIONS, lang_code: str | None = None) -> str:      # <-- system scelto dall'esterno
-    retrieval_block = retrieval_context if retrieval_context else "(no context available)"
-    system_parts = [system]
+def build_prompt(
+    message: str,
+    retrieval_context: str,
+    conversation_context: str | None = None,
+    relaxed: bool = False,
+    system: str = SYSTEM_INSTRUCTIONS,
+    lang_code: str | None = None,
+) -> tuple[str, str]:
+    """Build the system prompt and the user prompt.
+
+    Returns (system_prompt, user_prompt) to inject into the LLM chat completion
+    under the respective 'system' and 'user' roles, avoiding redundant token duplication.
+    """
+    retrieval_block = retrieval_context.strip() if retrieval_context and retrieval_context.strip() else "(no context available)"
+    system_parts = []
     if lang_code:
-        system_parts.insert(0, _language_directive(lang_code))
+        system_parts.append(_language_directive(lang_code).strip())
+    system_parts.append(str(system).strip())
     if relaxed:
-        system_parts.append(RELAXED_NOTICE)
-    system = "\n".join(system_parts)
-    prompt_parts = [system]
+        system_parts.append(RELAXED_NOTICE.strip())
+    system_prompt = "\n\n".join(system_parts)
+
+    prompt_parts = []
     if conversation_context:
         prompt_parts.append("Previous conversation:")
         prompt_parts.append(conversation_context)
@@ -317,41 +318,11 @@ def build_prompt(message, retrieval_context, conversation_context=None,
         prompt_parts.append(f"Question: {message}")
     prompt_parts.append("")
     prompt_parts.append("Answer:")
-    return "\n".join(prompt_parts)
+    return system_prompt, "\n".join(prompt_parts)
 
 
 
-_N_RESULTS_ANALYSIS_PROMPT = (
-    "You are a query analyser. Given the user query below, estimate how many "
-    "search results should be retrieved from the database. "
-    "Return ONLY a single integer, nothing else.\n"
-    "- If the query is specific/narrow (e.g. a single topic, a name, a date), return a low number (1-15).\n"
-    "- If the query is broad (e.g. a theme, a category), return a medium number (16-50).\n"
-    "- If the query asks for ALL, every, complete list, catalogue, or comprehensive results, "
-    f"return a high number (51-{MAX_N_RESULTS}).\n"
-    "\n"
-    "Query as a JSON string: {message}\n"
-    "Integer:"
-)
 
-
-async def _determine_n_results(message: str, model: str | None = None) -> int:
-    """Use the LLM to estimate the appropriate number of search results for the query."""
-    try:
-        prompt = _N_RESULTS_ANALYSIS_PROMPT.format(
-            message=json.dumps(message, ensure_ascii=False),
-        )
-        kwargs = {"temperature": 0.0}
-        if model:
-            kwargs["model"] = model
-        raw = await ollama_client.generate_completion(prompt, **kwargs)
-        number = int(raw.strip())
-        clamped = max(1, min(number, MAX_N_RESULTS))
-        logger.debug("LLM determined n_results=%d (raw=%r, clamped to [1, %d])", clamped, raw.strip(), MAX_N_RESULTS)
-        return clamped
-    except Exception as e:
-        logger.debug("Could not determine n_results via LLM (%s), falling back to DEFAULT_N_RESULTS=%d", e, DEFAULT_N_RESULTS)
-        return DEFAULT_N_RESULTS
 
 
 _LANGUAGE_DETECTION_PROMPT = (
@@ -666,15 +637,17 @@ async def generate_answer(
     context, sources = assemble_context(top_documents, context_metadatas)   # [CHANGED]
     logger.debug("CONTEXT PASSATO AL MODELLO:\n%s", context[:2000])
 
-    system = NBS_INSTRUCTIONS if nbs else SYSTEM_INSTRUCTIONS
+    system_base = NBS_INSTRUCTIONS if nbs else SYSTEM_INSTRUCTIONS
     logger.debug("PROMPT SCELTO: %s", "NBS" if nbs else "GENERIC")
-    prompt = build_prompt(message, context, conversation_context, relaxed=relaxed, system=str(system), lang_code=lang_code)
-    logger.debug("PROMPT: %d caratteri (~%d token stimati)", len(prompt), len(prompt) // 4)   # [NEW]
+    system_prompt, user_prompt = build_prompt(
+        message, context, conversation_context, relaxed=relaxed, system=str(system_base), lang_code=lang_code
+    )
+    logger.debug("PROMPT: %d caratteri (~%d token stimati)", len(user_prompt), len(user_prompt) // 4)
 
     if model:
-        answer = await ollama_client.generate_completion(prompt, model=model, temperature=0.0, system=system)
+        answer = await ollama_client.generate_completion(user_prompt, model=model, temperature=0.0, system=system_prompt)
     else:
-        answer = await ollama_client.generate_completion(prompt, temperature=0.0, system=system)
+        answer = await ollama_client.generate_completion(user_prompt, temperature=0.0, system=system_prompt)
 
     allowed_text = "\n".join([
         context or "",
