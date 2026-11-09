@@ -209,8 +209,15 @@
     .message.user { margin-left: min(16%, 120px); }
     .message.assistant { margin-right: min(8%, 60px); }
 
-    .role {
+    .message-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
       margin-bottom: 7px;
+    }
+
+    .role {
       color: var(--accent-2);
       font: 700 11px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
       letter-spacing: .12em;
@@ -218,6 +225,13 @@
     }
 
     .message.user .role { color: var(--accent); }
+
+    .timestamp {
+      color: var(--muted);
+      font: 400 11px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .02em;
+      opacity: 0.8;
+    }
 
     .bubble {
       padding: 16px 18px;
@@ -405,21 +419,36 @@
     elements.tenant.value = localStorage.getItem("idra-tenant") ?? "default-tenant";
     elements.conversation.value = localStorage.getItem("idra-conversation") ?? createConversationId();
 
-    function addMessage(role, content, sources = [], isError = false) {
+    function addMessage(role, content, sources = [], isError = false, durationMs = null) {
       elements.empty?.remove();
 
       const article = document.createElement("article");
       article.className = `message ${role}${isError ? " error" : ""}`;
 
-      const roleLabel = document.createElement("div");
+      const meta = document.createElement("div");
+      meta.className = "message-meta";
+
+      const roleLabel = document.createElement("span");
       roleLabel.className = "role";
       roleLabel.textContent = role === "user" ? "Tu" : isError ? "Errore" : "Idra";
+
+      const timeSpan = document.createElement("span");
+      timeSpan.className = "timestamp";
+      const nowStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      if (durationMs !== null && durationMs > 0) {
+        const sec = (durationMs / 1000).toFixed(1);
+        timeSpan.textContent = `${nowStr} (risposta in ${sec}s)`;
+      } else {
+        timeSpan.textContent = nowStr;
+      }
+
+      meta.append(roleLabel, timeSpan);
 
       const bubble = document.createElement("div");
       bubble.className = "bubble";
       bubble.textContent = content;
 
-      article.append(roleLabel, bubble);
+      article.append(meta, bubble);
 
       if (sources.length) {
         const sourceGrid = document.createElement("div");
@@ -482,6 +511,7 @@
       const payload = { message, conversationId };
       if (elements.model.value) payload.model = elements.model.value;
 
+      const startTime = performance.now();
       addMessage("user", message);
       elements.prompt.value = "";
       elements.send.disabled = true;
@@ -500,13 +530,15 @@
 
         if (!response.ok) throw new Error(await parseError(response));
         const result = await response.json();
-        addMessage("assistant", result.answer, result.sources ?? []);
+        const durationMs = Math.round(performance.now() - startTime);
+        addMessage("assistant", result.answer, result.sources ?? [], false, durationMs);
         if (result.conversationId) {
           elements.conversation.value = result.conversationId;
           localStorage.setItem("idra-conversation", result.conversationId);
         }
       } catch (error) {
-        addMessage("assistant", error.message || "Errore di connessione al server.", [], true);
+        const durationMs = Math.round(performance.now() - startTime);
+        addMessage("assistant", error.message || "Errore di connessione al server.", [], true, durationMs);
       } finally {
         elements.send.disabled = false;
         elements.send.textContent = "Invia";
