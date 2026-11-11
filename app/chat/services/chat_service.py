@@ -67,10 +67,45 @@ def _log_found_resources(documents, metadatas, distances) -> None:
 # ---------------------------------------------------------------------------
 URL_RE = re.compile(r"https?://[^\s)\]>\"'<]+")
 
-NO_ALTERNATIVE_MESSAGE = (
-    "I couldn't find other resources in the catalog for this request. "
-    "You could try rephrasing it or relaxing a constraint."
-)
+NO_ALTERNATIVE_MESSAGES: dict[str, str] = {
+    "en": (
+        "I couldn't find other resources in the catalog for this request. "
+        "You could try rephrasing it or relaxing a constraint."
+    ),
+    "it": (
+        "Non ho trovato altre risorse nel catalogo per questa richiesta. "
+        "Puoi provare a riformularla o ad allentare un vincolo."
+    ),
+    "es": (
+        "No pude encontrar otros recursos en el catálogo para esta solicitud. "
+        "Podrías intentar reformularla o relajar algún criterio."
+    ),
+    "fr": (
+        "Je n'ai pas trouvé d'autres ressources dans le catalogue pour cette demande. "
+        "Vous pouvez essayer de la reformuler ou d'assouplir un critère."
+    ),
+    "de": (
+        "Ich konnte keine weiteren Ressourcen im Katalog für diese Anfrage finden. "
+        "Sie könnten versuchen, sie umzuformulieren oder eine Bedingung zu lockern."
+    ),
+    "pt": (
+        "Não encontrei outros recursos no catálogo para este pedido. "
+        "Pode tentar reformulá-lo ou flexibilizar um critério."
+    ),
+    "nl": (
+        "Ik kon geen andere bronnen in de catalogus vinden voor dit verzoek. "
+        "U kunt proberen de vraag te herformuleren of een beperking te versoepelen."
+    ),
+}
+
+NO_ALTERNATIVE_MESSAGE = NO_ALTERNATIVE_MESSAGES["en"]
+
+
+def get_no_alternative_message(lang_code: str | None = None) -> str:
+    """Restituisce il messaggio tradotto in base al codice lingua (ISO 639-1)."""
+    if lang_code and lang_code.lower() in NO_ALTERNATIVE_MESSAGES:
+        return NO_ALTERNATIVE_MESSAGES[lang_code.lower()]
+    return NO_ALTERNATIVE_MESSAGE
 
 
 def _urls(text: str) -> set:
@@ -90,7 +125,8 @@ def _resource_url(meta: dict) -> str:                           # [NEW]
 
 
 def list_resources(metadatas: list,
-                   header: str = "These are the resources I found in the catalog:") -> str:   # [CHANGED]
+                   header: str = "These are the resources I found in the catalog:",
+                   lang_code: str | None = None) -> str:   # [CHANGED]
     """Risposta sicura costruita solo con le risorse recuperate, sempre con il link."""
     lines, seen = [], set()
     for meta in metadatas:
@@ -102,7 +138,7 @@ def list_resources(metadatas: list,
         seen.add(url or title)
         lines.append(f"- {title}: {url}" if url else f"- {title}")
     if not lines:
-        return NO_ALTERNATIVE_MESSAGE
+        return get_no_alternative_message(lang_code)
     return header + "\n" + "\n".join(lines)
 
 
@@ -507,6 +543,7 @@ async def generate_answer(
             return []
 
     async def _no_result() -> "ChatResponse":
+        no_alt_msg = get_no_alternative_message(lang_code)
         system_nr, user_nr = _build_no_result_prompt(message, conversation_context, lang_code=lang_code)
         try:
             if model:
@@ -515,12 +552,12 @@ async def generate_answer(
                 answer = await ollama_client.generate_completion(user_nr, temperature=0.0, system=system_nr)
         except Exception as e:
             logger.debug(f"No-result generation failed, using fallback: {e}")
-            answer = NO_ALTERNATIVE_MESSAGE
+            answer = no_alt_msg
 
         bad = invented_links(answer, conversation_context)
         if bad:
             logger.warning("Invented links removed (no-result path): %s", bad)
-            answer = NO_ALTERNATIVE_MESSAGE
+            answer = no_alt_msg
         answer = ensure_links(answer, await _previous_sources())
         return await _respond(answer, [])
 
@@ -680,12 +717,12 @@ async def generate_answer(
     bad = invented_links(answer, allowed_text)
     if bad:
         logger.warning("Invented links removed: %s", bad)
-        answer = list_resources(top_metadatas, header=CLOSEST_HEADER)
+        answer = list_resources(top_metadatas, header=CLOSEST_HEADER, lang_code=lang_code)
 
     if nbs and any(w in answer.lower() for w in ("potentially help", "main objective is not",
                                                   "potrebbe potenzialmente aiutare", "obiettivo principale non")):
         logger.warning("Forced NBS relevance: answer replaced")
-        answer = list_resources(current, header=CLOSEST_HEADER)
+        answer = list_resources(current, header=CLOSEST_HEADER, lang_code=lang_code)
     answer = ensure_links(answer, current + previous, fallback=current)
 
     return await _respond(answer, sources,

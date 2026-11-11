@@ -221,7 +221,7 @@ async def test_generate_answer_no_result_workflow_uses_spanish_prompt():
 async def test_generate_answer_does_not_leak_instructions_when_no_result_llm_fails():
     with patch("app.chat.services.chat_service.embed_query", new=AsyncMock(return_value=[])):
         with patch("app.ollama.client.generate_completion", new=AsyncMock(side_effect=RuntimeError("offline"))):
-            from app.chat.services.chat_service import generate_answer, NO_ALTERNATIVE_MESSAGE
+            from app.chat.services.chat_service import generate_answer, get_no_alternative_message
 
             response = await generate_answer(
                 message="¿Qué datos hay sobre tráfico?",
@@ -229,8 +229,23 @@ async def test_generate_answer_does_not_leak_instructions_when_no_result_llm_fai
                 tenant_id="tenant_a",
             )
 
-    assert response.answer == NO_ALTERNATIVE_MESSAGE
+    assert response.answer == get_no_alternative_message("es")
     assert "You are an assistant" not in response.answer
+
+
+@pytest.mark.asyncio
+async def test_generate_answer_no_alternative_translated_in_italian():
+    with patch("app.chat.services.chat_service.embed_query", new=AsyncMock(return_value=[])):
+        with patch("app.ollama.client.generate_completion", new=AsyncMock(side_effect=RuntimeError("offline"))):
+            from app.chat.services.chat_service import generate_answer, get_no_alternative_message
+
+            response = await generate_answer(
+                message="Quali dati ci sono sul traffico a Bologna?",
+                conversation_id=None,
+                tenant_id="tenant_a",
+            )
+
+    assert response.answer == get_no_alternative_message("it")
 
 
 @pytest.mark.asyncio
