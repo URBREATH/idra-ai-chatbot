@@ -19,6 +19,7 @@ drops the rejected one and proposes alternatives.
 from __future__ import annotations
 import logging
 from app.ollama import client as ollama_client   # adapt to your real path
+from app.observability import tracing
 from app.config.config import _REFERENCE_MARKERS, _REACTION_MARKERS, _REWRITE_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -43,18 +44,31 @@ async def rewrite_query(message: str, conversation_context: str,
     """Rewrite a follow-up into a standalone, positive search query.
     On any failure returns the original message, so search still works."""
     if not conversation_context:
+        tracing.fact(query_rewrite="skipped_no_history")
         return message
     prompt = _REWRITE_PROMPT.format(context=conversation_context, message=message)
-    try:
-        if model:
-            raw = await ollama_client.generate_completion(prompt, model=model, temperature=0.0)
-        else:
-            raw = await ollama_client.generate_completion(prompt, temperature=0.0)
-    except Exception as e:
-        logger.debug("Query rewrite failed, using original message: %s", e)
-        return message
-    rewritten = _clean(raw)
-    if not rewritten or len(rewritten) > 300:
-        return message
-    logger.debug("FOLLOW-UP rewrite: %r -> %r", message, rewritten)
-    return rewritten
+    with tracing.observe_step("chat.query_rewrite", as_type="chain",
+                              input=tracing.io({"message": message, "history_chars": len(conversation_context)})) as obs:
+        try:
+            if model:
+                raw = await ollama_client.generate_completion(prompt, model=model, temperature=0.0,
+                                                              name="llm.query_rewrite")
+            else:
+                raw = await ollama_client.generate_completion(prompt, temperature=0.0,
+                                                              name="llm.query_rewrite")
+        except Exception as e:
+            logger.debug("Query rewrite failed, using original message: %s", e)
+            tracing.safe_update(obs, level="WARNING", status_message=f"rewrite failed: {e}",
+                                output=tracing.io(message))
+            tracing.fact(query_rewrite="failed")
+            return message
+        rewritten = _clean(raw)
+        if not rewritten or len(rewritten) > 300:
+            tracing.safe_update(obs, level="WARNING", status_message="rewrite empty or too long",
+                                output=tracing.io(message))
+            tracing.fact(query_rewrite="rejected")
+            return message
+        logger.debug("FOLLOW-UP rewrite: %r -> %r", message, rewritten)
+        tracing.safe_update(obs, output=tracing.io(rewritten))
+        tracing.fact(query_rewrite="rewritten")
+        return rewritten

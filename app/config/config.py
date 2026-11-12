@@ -22,6 +22,12 @@ FIELD_LABELS = {
     "accessRights": "AccessRights",
     "issued": "Published",
     "modified": "Updated",
+    # Idra MySQL source (app/mysql/repositories.py)
+    "catalogue": "Catalogue",
+    "country": "Country",
+    "frequency": "Frequency",
+    "version": "Version",
+    "byteSize": "ByteSize",
 }
 
 FORMAT_CANON = {
@@ -33,6 +39,19 @@ FORMAT_CANON = {
     "shp": "Shapefile", "shapefile": "Shapefile",
     "geotiff": "GeoTIFF", "tiff": "GeoTIFF", "tif": "GeoTIFF",
     "pdf": "PDF", "application/pdf": "PDF", "parquet": "Parquet", "wms": "WMS", "wfs": "WFS",
+    # Seen in the Idra MySQL catalogue (EU file-type URIs, IANA media types, free text)
+    "tsv": "TSV", "tab-separated-values": "TSV", "text/tab-separated-values": "TSV",
+    "html": "HTML", "text/html": "HTML",
+    "esri shapefile": "Shapefile", "esri shape": "Shapefile", "shapefile (shp)": "Shapefile",
+    "zip": "ZIP", "application/zip": "ZIP",
+    "rdf": "RDF", "rdfxml": "RDF", "rdf_xml": "RDF", "rdf+xml": "RDF", "application/rdf+xml": "RDF",
+    "turtle": "Turtle", "text/turtle": "Turtle", "kml": "KML", "kmz": "KML",
+    "gpkg": "GeoPackage", "geopackage": "GeoPackage", "geopackage+sqlite3": "GeoPackage",
+    "ogc:wms": "WMS", "ogc:wfs": "WFS", "ogc:geojson": "GeoJSON",
+    "ms_excel": "XLSX", "vnd.ms-excel": "XLSX",
+    "vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
+    "vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+    "vnd.openxmlformats-officedocument.presentationml.presentation": "PPTX",
 }
 
 

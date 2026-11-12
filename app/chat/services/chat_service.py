@@ -24,6 +24,7 @@ from app.config.config import (
     _NBS_INTENT, _REFERENCE_MARKERS, _REACTION_MARKERS,
 )
 from app.instructions.nbs_instructions import is_nbs_question
+from app.observability import tracing
 
 load_dotenv()
 
@@ -392,7 +393,7 @@ def _detect_language_locally(text: str) -> tuple[str | None, float, float]:
 async def _detect_language_with_llm(text: str, model: str | None = None) -> str | None:
     """Ask the LLM for the message language as an ISO 639-1 code."""
     try:
-        kwargs = {"temperature": 0.0}
+        kwargs = {"temperature": 0.0, "name": "llm.language_detection"}
         if model:
             kwargs["model"] = model
         raw = await ollama_client.generate_completion(
@@ -411,9 +412,22 @@ async def _detect_language_with_llm(text: str, model: str | None = None) -> str 
 
 
 async def _detect_language(text: str, model: str | None = None) -> str | None:
+    with tracing.observe_step("chat.language_detection", as_type="span",
+                              input=tracing.io(text)) as obs:
+        code, method, confidence, margin = await _detect_language_impl(text, model=model)
+        tracing.safe_update(obs, output=code, metadata={
+            "method": method, "confidence": round(confidence, 4), "margin": round(margin, 4),
+            "threshold": LANGUAGE_CONFIDENCE_THRESHOLD, "margin_threshold": LANGUAGE_CONFIDENCE_MARGIN,
+        }, level=None if code else "WARNING", status_message=None if code else "language not detected")
+        tracing.fact(language=code or "unknown", language_method=method,
+                     language_confidence=round(confidence, 4))
+        return code
+
+
+async def _detect_language_impl(text: str, model: str | None = None) -> tuple[str | None, str, float, float]:
     if not any(character.isalpha() for character in text):
         logger.debug("Skipping language detection for input without letters")
-        return None
+        return None, "skipped_no_letters", 0.0, 0.0
 
     try:
         code, confidence, margin = _detect_language_locally(text)
@@ -421,22 +435,23 @@ async def _detect_language(text: str, model: str | None = None) -> str | None:
         logger.debug("Local language detection failed: %s", e)
         code, confidence, margin = None, 0.0, 0.0
     if code:
-        return code
+        return code, "lingua", confidence, margin
     logger.debug(
         "Local language detection is ambiguous (confidence=%.3f, margin=%.3f); using LLM fallback",
         confidence, margin,
     )
     try:
-        return await asyncio.wait_for(
+        llm_code = await asyncio.wait_for(
             _detect_language_with_llm(text, model=model),
             timeout=LANGUAGE_DETECTION_TIMEOUT,
         )
+        return llm_code, "llm_fallback", confidence, margin
     except TimeoutError:
         logger.debug(
             "Language detection LLM timed out after %.1f seconds",
             LANGUAGE_DETECTION_TIMEOUT,
         )
-        return None
+        return None, "llm_timeout", confidence, margin
 
 
 def _language_directive(lang_code: str | None) -> str:
@@ -494,16 +509,21 @@ async def generate_answer(
             )
     effective_model = model or os.getenv("OLLAMA_LLM_MODEL", "mistral-nemo")
     logger.debug("Using LLM model for chat workflow: %s", effective_model)
+    tracing.fact(model=effective_model)
 
     conversation_context = ""
     if user_id:
-        try:
-            conversation_context = await conversation_services.get_context_for_llm(
-                conversation_id=conversation_id, user_id=user_id,tenant_id=tenant_id, limit=10,
-            )
-        except Exception as e:
-            logger.debug(f"Could not load conversation context: {e}")
-            conversation_context = ""
+        with tracing.observe_step("chat.load_history", as_type="tool") as obs:
+            try:
+                conversation_context = await conversation_services.get_context_for_llm(
+                    conversation_id=conversation_id, user_id=user_id,tenant_id=tenant_id, limit=10,
+                )
+            except Exception as e:
+                logger.debug(f"Could not load conversation context: {e}")
+                conversation_context = ""
+                tracing.safe_update(obs, level="WARNING", status_message=str(e)[:300])
+            tracing.safe_update(obs, output={"history_chars": len(conversation_context or "")})
+    tracing.fact(has_history=bool(conversation_context))
 
     lang_code = await _detect_language(message, model=model)
     logger.debug("Detected language for query: %s", lang_code)
@@ -518,7 +538,9 @@ async def generate_answer(
             logger.debug(f"Could not persist user message: {e}")
 
     async def _respond(answer_text: str, sources_list: list,
-                       resources: list | None = None) -> "ChatResponse":
+                       resources: list | None = None, exit_path: str = "normal") -> "ChatResponse":
+        tracing.fact(exit_path=exit_path, answer_chars=len(answer_text or ""),
+                     sources_returned=len(sources_list or []))
         if user_id:
             try:
                 await conversation_services.append_assistant_message(
@@ -542,31 +564,41 @@ async def generate_answer(
             logger.debug(f"Could not load previous sources: {e}")
             return []
 
-    async def _no_result() -> "ChatResponse":
+    async def _no_result(reason: str) -> "ChatResponse":
+        tracing.fact(no_result_reason=reason)
         no_alt_msg = get_no_alternative_message(lang_code)
         system_nr, user_nr = _build_no_result_prompt(message, conversation_context, lang_code=lang_code)
         try:
             if model:
-                answer = await ollama_client.generate_completion(user_nr, model=model, temperature=0.0, system=system_nr)
+                answer = await ollama_client.generate_completion(user_nr, model=model, temperature=0.0, system=system_nr,
+                                                                 name="llm.no_result_answer")
             else:
-                answer = await ollama_client.generate_completion(user_nr, temperature=0.0, system=system_nr)
+                answer = await ollama_client.generate_completion(user_nr, temperature=0.0, system=system_nr,
+                                                                 name="llm.no_result_answer")
         except Exception as e:
             logger.debug(f"No-result generation failed, using fallback: {e}")
             answer = no_alt_msg
+            tracing.fact(no_result_generation_failed=True)
 
-        bad = invented_links(answer, conversation_context)
-        if bad:
-            logger.warning("Invented links removed (no-result path): %s", bad)
-            answer = no_alt_msg
-        answer = ensure_links(answer, await _previous_sources())
-        return await _respond(answer, [])
+        with tracing.observe_step("chat.guardrails", as_type="guardrail",
+                                  input=tracing.io(answer)) as g:
+            bad = invented_links(answer, conversation_context)
+            if bad:
+                logger.warning("Invented links removed (no-result path): %s", bad)
+                answer = no_alt_msg
+            answer = ensure_links(answer, await _previous_sources())
+            tracing.fact(invented_links=len(bad or []))
+            tracing.safe_update(g, output=tracing.io(answer), metadata={"invented_links": list(bad or [])},
+                                level="WARNING" if bad else None)
+        return await _respond(answer, [], exit_path="no_result")
 
     fmt = requested_format(message)
     if user_id and conversation_context and fmt and refers_to_previous(message):
         previous = await _previous_sources()
         if previous:
             logger.debug("FORMAT FILTER %s on %d previous resources", fmt, len(previous))
-            return await _respond(filter_by_format(previous, fmt), [])
+            tracing.fact(format_filter=fmt)
+            return await _respond(filter_by_format(previous, fmt), [], exit_path="format_filter")
 
     # Rewrite the query into a clean English search string.
     # When there is conversation history, the rewrite also resolves references and
@@ -587,53 +619,82 @@ async def generate_answer(
         if previous_titles:
             search_text = search_text + " " + " ".join(dict.fromkeys(previous_titles))
             logger.debug("Reference to previous results: query + %s", list(dict.fromkeys(previous_titles)))
+            tracing.fact(reference_to_previous=True)
     logger.debug("NBS intent: message=%s search=%s datasets=%s -> %s",
                  is_nbs_question(message), is_nbs_question(search_text), data_request, nbs)
 
+    nbs_expansion: list = []
     if nbs and NBS_QUERY_EXPANSION:
         extra = problem_terms(message + " " + search_text)
         if extra:
+            nbs_expansion = list(extra)
             search_text = search_text + " " + " ".join(extra)
             logger.debug("NBS query expanded with: %s", extra)
+    tracing.fact(nbs_mode=nbs, data_request=data_request, nbs_expansion_terms=len(nbs_expansion))
 
-    query_embedding = await embed_query(search_text)
-    if not query_embedding:
-        logger.debug("Empty query embedding; no-result workflow")
-        return await _no_result()
-
+    # ---------------------------------------------------------------- retrieval
+    no_result_reason = None
+    documents, metadatas, distances = [], [], []
+    threshold, relaxed = DISTANCE_THRESHOLD, False
     where = {"is_nbs": True} if nbs else None
-    logger.debug("WHERE passato alla ricerca: %s", where)
-    raw_results = vector_search(tenant_id, query_embedding, where=where)
-    documents = (raw_results.get("documents") or [[]])[0]
-    metadatas = (raw_results.get("metadatas") or [[]])[0]
-    distances = (raw_results.get("distances") or [[]])[0]
+    with tracing.observe_step("retrieval.search", as_type="retriever",
+                              input=tracing.io({"search_text": search_text, "original": message}),
+                              metadata={"where": where, "n_results": DEFAULT_N_RESULTS,
+                                        "threshold_base": DISTANCE_THRESHOLD,
+                                        "threshold_step": DISTANCE_THRESHOLD_STEP,
+                                        "threshold_max": DISTANCE_THRESHOLD_MAX,
+                                        "nbs_expansion": nbs_expansion or None}) as ret:
+        query_embedding = await embed_query(search_text)
+        if not query_embedding:
+            logger.debug("Empty query embedding; no-result workflow")
+            no_result_reason = "empty_embedding"
+        else:
+            logger.debug("WHERE passato alla ricerca: %s", where)
+            raw_results = vector_search(tenant_id, query_embedding, where=where)
+            documents = (raw_results.get("documents") or [[]])[0]
+            metadatas = (raw_results.get("metadatas") or [[]])[0]
+            distances = (raw_results.get("distances") or [[]])[0]
 
-    logger.debug("distances for query %r: %s", message, distances)
-    if documents:
-        _log_found_resources(documents, metadatas, distances)
+            logger.debug("distances for query %r: %s", message, distances)
+            if documents:
+                _log_found_resources(documents, metadatas, distances)
 
-    if not documents:
-        logger.debug("Nessun candidato per tenant %s; no-result workflow", tenant_id)
-        return await _no_result()
+            if not documents:
+                logger.debug("Nessun candidato per tenant %s; no-result workflow", tenant_id)
+                no_result_reason = "no_candidates"
+            else:
+                kept = [i for i, d in enumerate(distances) if d <= threshold]
+                while not kept and threshold < DISTANCE_THRESHOLD_MAX:
+                    threshold = round(min(threshold + DISTANCE_THRESHOLD_STEP, DISTANCE_THRESHOLD_MAX), 4)
+                    kept = [i for i, d in enumerate(distances) if d <= threshold]
+                    if kept:
+                        relaxed = True
+                        logger.debug("Nessun risultato sotto la soglia base %.3f; allargata a %.3f -> %d risultati",
+                                     DISTANCE_THRESHOLD, threshold, len(kept))
+                n_candidates = len(documents)
+                best = min(distances) if distances else None
+                tracing.fact(candidates=n_candidates, best_distance=round(best, 4) if best is not None else None,
+                             candidates_kept=len(kept), threshold_final=threshold, threshold_relaxed=relaxed)
+                tracing.safe_update(ret, output=[
+                    {"rank": r + 1, "dataset_id": (metadatas[i] or {}).get("dataset_id"),
+                     "title": str((metadatas[i] or {}).get("title") or "")[:120],
+                     "entity_type": (metadatas[i] or {}).get("entity_type"),
+                     "distance": round(float(distances[i]), 4), "kept": i in kept}
+                    for r, i in enumerate(range(len(documents)))][:LOG_TOP_FOUND * 2],
+                    metadata={"candidates": n_candidates, "kept": len(kept), "threshold_final": threshold,
+                              "relaxed": relaxed, "best_distance": best})
+                if not kept:
+                    logger.debug("Nessun risultato entro la soglia massima %.3f; no-result", DISTANCE_THRESHOLD_MAX)
+                    no_result_reason = "above_threshold"
+                else:
+                    documents = [documents[i] for i in kept]
+                    metadatas = [metadatas[i] for i in kept]
+                    distances = [distances[i] for i in kept]
+        if no_result_reason:
+            tracing.safe_update(ret, level="WARNING", status_message=no_result_reason)
 
-    threshold = DISTANCE_THRESHOLD
-    kept = [i for i, d in enumerate(distances) if d <= threshold]
-    relaxed = False
-    while not kept and threshold < DISTANCE_THRESHOLD_MAX:
-        threshold = round(min(threshold + DISTANCE_THRESHOLD_STEP, DISTANCE_THRESHOLD_MAX), 4)
-        kept = [i for i, d in enumerate(distances) if d <= threshold]
-        if kept:
-            relaxed = True
-            logger.debug("Nessun risultato sotto la soglia base %.3f; allargata a %.3f -> %d risultati",
-                         DISTANCE_THRESHOLD, threshold, len(kept))
-
-    if not kept:
-        logger.debug("Nessun risultato entro la soglia massima %.3f; no-result", DISTANCE_THRESHOLD_MAX)
-        return await _no_result()
-
-    documents = [documents[i] for i in kept]
-    metadatas = [metadatas[i] for i in kept]
-    distances = [distances[i] for i in kept]
+    if no_result_reason:
+        return await _no_result(no_result_reason)
 
     top_indices = rerank(message, documents, metadatas, distances, top_k=TOP_K)
     if not top_indices:
@@ -651,8 +712,9 @@ async def generate_answer(
         rejected = {r.get("dataset_id") for r in await _previous_sources() if r.get("dataset_id")}
         unique_indices = [i for i in unique_indices
                           if (metadatas[i] or {}).get("dataset_id") not in rejected]
+        tracing.fact(rejected_previous=len(rejected))
         if not unique_indices:
-            return await _no_result()
+            return await _no_result("all_rejected")
 
     top_indices = unique_indices[:MAX_RESOURCES if nbs else MAX_DATASETS]
 
@@ -663,28 +725,39 @@ async def generate_answer(
     logger.debug("Risorse passate all'LLM (dopo soglia e rerank): %s",
                  [(m or {}).get("title") or (m or {}).get("dataset_id") for m in top_metadatas])
 
-    top_documents = [str(d)[:MAX_DOC_CHARS] for d in top_documents]
+    with tracing.observe_step("chat.context_assembly", as_type="span") as ctx_obs:
+        top_documents = [str(d)[:MAX_DOC_CHARS] for d in top_documents]
 
-    excerpt_query = message + " " + search_text
-    context_metadatas = [
-        {k: (best_excerpt(v, excerpt_query, MAX_DOC_CHARS) if isinstance(v, str) else v)
-         for k, v in (m or {}).items()}
-        for m in top_metadatas
-    ]
-    context, sources = assemble_context(top_documents, context_metadatas)   # [CHANGED]
-    logger.debug("CONTEXT PASSATO AL MODELLO:\n%s", context[:2000])
+        excerpt_query = message + " " + search_text
+        context_metadatas = [
+            {k: (best_excerpt(v, excerpt_query, MAX_DOC_CHARS) if isinstance(v, str) else v)
+             for k, v in (m or {}).items()}
+            for m in top_metadatas
+        ]
+        context, sources = assemble_context(top_documents, context_metadatas)   # [CHANGED]
+        logger.debug("CONTEXT PASSATO AL MODELLO:\n%s", context[:2000])
 
-    system_base = NBS_INSTRUCTIONS if nbs else SYSTEM_INSTRUCTIONS
-    logger.debug("PROMPT SCELTO: %s", "NBS" if nbs else "GENERIC")
-    system_prompt, user_prompt = build_prompt(
-        message, context, conversation_context, relaxed=relaxed, system=str(system_base), lang_code=lang_code
-    )
-    logger.debug("PROMPT: %d caratteri (~%d token stimati)", len(user_prompt), len(user_prompt) // 4)
+        system_base = NBS_INSTRUCTIONS if nbs else SYSTEM_INSTRUCTIONS
+        logger.debug("PROMPT SCELTO: %s", "NBS" if nbs else "GENERIC")
+        system_prompt, user_prompt = build_prompt(
+            message, context, conversation_context, relaxed=relaxed, system=str(system_base), lang_code=lang_code
+        )
+        logger.debug("PROMPT: %d caratteri (~%d token stimati)", len(user_prompt), len(user_prompt) // 4)
+        tracing.fact(context_resources=len(top_metadatas), context_chars=len(context or ""),
+                     prompt_type="NBS" if nbs else "GENERIC")
+        tracing.safe_update(ctx_obs, output={
+            "resources": [{"dataset_id": (m or {}).get("dataset_id"), "title": (m or {}).get("title")}
+                          for m in top_metadatas],
+            "context_chars": len(context or ""), "prompt_chars": len(user_prompt),
+            "prompt_type": "NBS" if nbs else "GENERIC", "relaxed_notice": relaxed,
+        })
 
     if model:
-        answer = await ollama_client.generate_completion(user_prompt, model=model, temperature=0.0, system=system_prompt)
+        answer = await ollama_client.generate_completion(user_prompt, model=model, temperature=0.0, system=system_prompt,
+                                                         name="llm.answer")
     else:
-        answer = await ollama_client.generate_completion(user_prompt, temperature=0.0, system=system_prompt)
+        answer = await ollama_client.generate_completion(user_prompt, temperature=0.0, system=system_prompt,
+                                                         name="llm.answer")
 
     allowed_text = "\n".join([
         context or "",
@@ -692,38 +765,58 @@ async def generate_answer(
         " ".join(str((m or {}).get("url") or "") for m in top_metadatas),
     ])
 
-    no_relevant = False
-    if nbs:
-        lines = answer.strip().split("\n")
-        first = lines[0].strip().strip("*").strip() if lines else ""
-        if first.upper().startswith("RELEVANT"):
-            decision = first.split(":", 1)[1].strip(" *") if ":" in first else ""
-            answer = "\n".join(lines[1:]).strip()
-            no_relevant = (not decision) or decision.upper().startswith("NONE")
-            logger.debug("NBS relevance decision: %r", decision)
+    with tracing.observe_step("chat.guardrails", as_type="guardrail", input=tracing.io(answer)) as g:
+        no_relevant = False
+        nbs_decision = None
+        bad, forced, final = [], False, ""
+        if nbs:
+            lines = answer.strip().split("\n")
+            first = lines[0].strip().strip("*").strip() if lines else ""
+            if first.upper().startswith("RELEVANT"):
+                decision = first.split(":", 1)[1].strip(" *") if ":" in first else ""
+                answer = "\n".join(lines[1:]).strip()
+                no_relevant = (not decision) or decision.upper().startswith("NONE")
+                nbs_decision = decision
+                logger.debug("NBS relevance decision: %r", decision)
 
-    current = compact_resources(top_metadatas, "")
-    previous = await _previous_sources() if conversation_context else []
+        current = compact_resources(top_metadatas, "")
+        previous = await _previous_sources() if conversation_context else []
 
-    cited = any(_is_mentioned(r, _ascii_words(answer), _urls(answer)) for r in current + previous)
-    if nbs and (no_relevant or not cited):                              # [CHANGED]
-        logger.warning("No relevant catalog resource: general advice with notice")
-        allowed = set() if no_relevant else _urls(allowed_text)
-        answer = URL_RE.sub(lambda m: m.group(0) if m.group(0).rstrip(".,;:!?/") in allowed else "", answer)
-        answer = re.sub(r"(?im)^\s*links?\s*:\s*$\n?", "", answer)
-        answer = re.sub(r"\s*\(\s*\)", "", answer)
-        return await _respond(NO_MATCH_NOTICE + answer.strip(), [], resources=[])
+        cited = any(_is_mentioned(r, _ascii_words(answer), _urls(answer)) for r in current + previous)
+        tracing.fact(cited_resource=cited, nbs_no_relevant=no_relevant if nbs else None)
+        if nbs and (no_relevant or not cited):                              # [CHANGED]
+            logger.warning("No relevant catalog resource: general advice with notice")
+            allowed = set() if no_relevant else _urls(allowed_text)
+            answer = URL_RE.sub(lambda m: m.group(0) if m.group(0).rstrip(".,;:!?/") in allowed else "", answer)
+            answer = re.sub(r"(?im)^\s*links?\s*:\s*$\n?", "", answer)
+            answer = re.sub(r"\s*\(\s*\)", "", answer)
+            tracing.safe_update(g, output=tracing.io(answer), level="WARNING",
+                                status_message="nbs: no relevant catalog resource",
+                                metadata={"nbs_decision": nbs_decision, "cited": cited})
+            final = NO_MATCH_NOTICE + answer.strip()
+            general_advice = True
+        else:
+            general_advice = False
+            bad = invented_links(answer, allowed_text)
+            if bad:
+                logger.warning("Invented links removed: %s", bad)
+                answer = list_resources(top_metadatas, header=CLOSEST_HEADER, lang_code=lang_code)
 
-    bad = invented_links(answer, allowed_text)
-    if bad:
-        logger.warning("Invented links removed: %s", bad)
-        answer = list_resources(top_metadatas, header=CLOSEST_HEADER, lang_code=lang_code)
+            forced = bool(nbs and any(w in answer.lower() for w in ("potentially help", "main objective is not",
+                                                                     "potrebbe potenzialmente aiutare", "obiettivo principale non")))
+            if forced:
+                logger.warning("Forced NBS relevance: answer replaced")
+                answer = list_resources(current, header=CLOSEST_HEADER, lang_code=lang_code)
+            answer = ensure_links(answer, current + previous, fallback=current)
+            tracing.fact(invented_links=len(bad or []), forced_nbs_relevance=forced)
+            tracing.safe_update(g, output=tracing.io(answer),
+                                level="WARNING" if (bad or forced) else None,
+                                metadata={"invented_links": list(bad or []), "forced_nbs_relevance": forced,
+                                          "nbs_decision": nbs_decision, "cited": cited})
 
-    if nbs and any(w in answer.lower() for w in ("potentially help", "main objective is not",
-                                                  "potrebbe potenzialmente aiutare", "obiettivo principale non")):
-        logger.warning("Forced NBS relevance: answer replaced")
-        answer = list_resources(current, header=CLOSEST_HEADER, lang_code=lang_code)
-    answer = ensure_links(answer, current + previous, fallback=current)
-
+    if general_advice:
+        return await _respond(final, [], resources=[], exit_path="nbs_general_advice")
+    exit_path = "forced_nbs_relevance" if forced else ("invented_links_fallback" if bad else "normal")
     return await _respond(answer, sources,
-                          resources=compact_resources(top_metadatas, answer))   # [CHANGED]
+                          resources=compact_resources(top_metadatas, answer),   # [CHANGED]
+                          exit_path=exit_path)

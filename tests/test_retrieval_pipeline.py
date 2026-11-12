@@ -39,7 +39,9 @@ def test_vector_search_uses_tenant_collection_with_tenant_filter():
     mock_collection.query.assert_called_once()
     call_kwargs = mock_collection.query.call_args.kwargs
     assert call_kwargs["n_results"] == 10
-    assert call_kwargs["where"]["tenant_id"] == "tenant_a"
+    # tenant + entity_type defaults are combined with $and
+    assert {"tenant_id": "tenant_a"} in call_kwargs["where"]["$and"]
+    assert {"entity_type": "Dataset"} in call_kwargs["where"]["$and"]
     assert call_kwargs["query_embeddings"] == [[0.1] * 1024]
     assert result["ids"] == [["doc1", "doc2"]]
 
@@ -55,21 +57,37 @@ def test_vector_search_allows_extra_metadata_filters():
 
     call_kwargs = mock_collection.query.call_args.kwargs
     assert call_kwargs["n_results"] == 5
-    assert call_kwargs["where"] == {"tenant_id": "tenant_a", "theme": "air_quality"}
+    assert call_kwargs["where"] == {
+        "$and": [
+            {"tenant_id": "tenant_a"},
+            {"theme": "air_quality"},
+            {"entity_type": "Dataset"},
+        ]
+    }
 
 
 def test_rerank_orders_by_relevance_and_returns_top_k_indices():
-    from app.retrieval.reranker.reranker import rerank
+    from unittest.mock import patch
+
+    from app.retrieval.reranker import reranker
 
     query = "air quality"
     documents = ["no2 anomalies", "water pollution", "pm10 levels", "traffic data", "noise maps"]
     metadatas = [{"dataset_id": "ds1"}, {"dataset_id": "ds2"}, {"dataset_id": "ds3"}, {"dataset_id": "ds4"}, {"dataset_id": "ds5"}]
     distances = [0.9, 0.1, 0.5, 0.3, 0.2]
 
-    indices = rerank(query, documents, metadatas, distances, top_k=5)
+    # force the distance fallback so the expected order is deterministic
+    with patch.object(reranker, "_cross_encoder_scores", return_value=None):
+        indices = reranker.rerank(query, documents, metadatas, distances, top_k=5)
 
-    assert len(indices) == 3
-    assert all(0 <= i < len(documents) for i in indices)
+    assert len(indices) == 5
+    # ascending distance == descending relevance
+    assert indices == [1, 4, 3, 2, 0]
+
+    with patch.object(reranker, "_cross_encoder_scores", return_value=None):
+        truncated = reranker.rerank(query, documents, metadatas, distances, top_k=3)
+
+    assert truncated == [1, 4, 3]
 
 
 def test_rerank_fallback_uses_distance_when_no_encoder_available():

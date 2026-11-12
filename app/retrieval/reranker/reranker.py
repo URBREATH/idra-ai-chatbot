@@ -3,7 +3,8 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from app.common.utils.reranker_encoder import get_cross_encoder
+from app.common.utils.reranker_encoder import get_cross_encoder, OLLAMA_RERANKER_MODEL
+from app.observability import tracing
 
 load_dotenv()
 DEFAULT_TOP_K = int(os.getenv("DEFAULT_TOP_K", 10))
@@ -17,17 +18,22 @@ def _distance_based_rank(distances: list[float], top_k: int = DEFAULT_TOP_K) -> 
     return ranked[:top_k]
 
 
+def _cross_encoder_scores(query: str, documents: list[str]) -> list[float] | None:
+    encoder = get_cross_encoder()
+    if encoder is None or not documents:
+        return None
+    return [float(s) for s in encoder.predict([(query, doc) for doc in documents])]
+
+
 def _cross_encoder_rank(
     query: str,
     documents: list[str],
     top_k: int = DEFAULT_TOP_K,
 ) -> list[int]:
     """Rank documents using ms-marco-MiniLM-L-6-v2 cross-encoder (ADR-007)."""
-    encoder = get_cross_encoder()
-    if encoder is None or not documents:
+    scores = _cross_encoder_scores(query, documents)
+    if not scores:
         return []
-
-    scores = encoder.predict([(query, doc) for doc in documents])
     ranked = sorted(range(len(documents)), key=lambda i: scores[i], reverse=True)
     return ranked[:top_k]
 
@@ -48,8 +54,29 @@ def rerank(
     if not documents:
         return []
 
-    indices = _cross_encoder_rank(query, documents, top_k=top_k)
-    if indices:
-        return indices
+    with tracing.observe_step("retrieval.rerank", as_type="span",
+                              input=tracing.io({"query": query, "candidates": len(documents), "top_k": top_k})) as obs:
+        scores = None
+        try:
+            scores = _cross_encoder_scores(query, documents)
+        except Exception as exc:  # model loaded but predict failed: fall back
+            tracing.safe_update(obs, level="WARNING", status_message=f"cross-encoder failed: {exc}")
+        if scores:
+            indices = sorted(range(len(documents)), key=lambda i: scores[i], reverse=True)[:top_k]
+            method = "cross_encoder"
+        else:
+            indices = _distance_based_rank(distances, top_k=top_k)
+            method = "distance"
 
-    return _distance_based_rank(distances, top_k=top_k)
+        def _label(i: int) -> str:
+            m = (metadatas[i] if i < len(metadatas) else None) or {}
+            return str(m.get("title") or m.get("dataset_id") or f"#{i}")[:120]
+
+        ranking = [{"rank": r + 1, "index": i, "title": _label(i),
+                    "distance": round(float(distances[i]), 4) if i < len(distances) else None,
+                    "score": round(scores[i], 4) if scores else None}
+                   for r, i in enumerate(indices)]
+        tracing.safe_update(obs, output=ranking,
+                            metadata={"method": method, "model": OLLAMA_RERANKER_MODEL if scores else None})
+        tracing.fact(rerank_method=method)
+        return indices

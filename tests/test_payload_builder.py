@@ -31,13 +31,11 @@ class TestPayloadBuilder:
             with patch("app.ingestion.payload_builder.crawl", new=AsyncMock(return_value=mock_technical)):
                 result = await build_payload(dataset)
 
-        assert "[SEMANTIC BLOCK]" in result
-        assert "[TECHNICAL BLOCK]" in result
-        assert "[DESCRIPTION BLOCK]" in result
+        assert "Occupazione giovanile" in result
+        assert "Dataset sull'occupazione" in result
         assert "occupazione" in result
         assert "lavoro" in result
-        assert "FREQ" in result
-        assert "Dataset sull'occupazione" in result
+        assert "mercato del lavoro" in result
 
     @pytest.mark.asyncio
     async def test_build_respects_token_limit(self):
@@ -74,7 +72,6 @@ class TestPayloadBuilder:
             with patch("app.ingestion.payload_builder.crawl", new=AsyncMock(return_value="")):
                 result = await build_payload(dataset)
 
-        assert "[DESCRIPTION BLOCK]" in result
         assert "Test Dataset" in result
 
     @pytest.mark.asyncio
@@ -107,7 +104,9 @@ class TestPayloadBuilder:
             with patch("app.ingestion.payload_builder.crawl", new=AsyncMock(return_value="")):
                 result = await build_payload(dataset)
 
-        assert "urn:ngsi-ld:Dataset:123" in result
+        # the dataset id must not pollute the embedding text (it lives in chunk_id/metadata)
+        assert "urn:ngsi-ld:Dataset:123" not in result
+        assert "Test" in result
 
     @pytest.mark.asyncio
     async def test_build_separator_format(self):
@@ -119,5 +118,7 @@ class TestPayloadBuilder:
             with patch("app.ingestion.payload_builder.crawl", new=AsyncMock(return_value="b")):
                 result = await build_payload(dataset)
 
-        parts = result.split("[SEP]")
-        assert len(parts) == 3
+        # single semantic document: no legacy block separators
+        assert "[SEP]" not in result
+        assert "T" in result
+        assert "a" in result

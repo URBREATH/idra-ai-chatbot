@@ -4,35 +4,37 @@ from unittest.mock import patch, MagicMock, AsyncMock
 @pytest.mark.asyncio
 async def test_generate_embedding_returns_vector():
     mock_response = MagicMock()
-    mock_response.json.return_value = {"embedding": [0.1, 0.2, 0.3]}
+    mock_response.json.return_value = {"embeddings": [[0.1, 0.2, 0.3]]}
     mock_response.raise_for_status = MagicMock()
-    
+
     with patch("httpx.AsyncClient") as mock_client_class:
         mock_client = AsyncMock()
         mock_client.post.return_value = mock_response
         mock_client_class.return_value.__aenter__.return_value = mock_client
-        
+
         from app.ollama.client import generate_embedding
         result = await generate_embedding("test text")
-        
+
         assert result == [0.1, 0.2, 0.3]
+        assert mock_client.post.call_args[0][0].endswith("/api/embed")
 
 @pytest.mark.asyncio
 async def test_generate_embedding_uses_custom_model():
     mock_response = MagicMock()
-    mock_response.json.return_value = {"embedding": [0.5] * 1024}
+    mock_response.json.return_value = {"embeddings": [[0.5] * 1024]}
     mock_response.raise_for_status = MagicMock()
-    
+
     with patch("httpx.AsyncClient") as mock_client_class:
         mock_client = AsyncMock()
         mock_client.post.return_value = mock_response
         mock_client_class.return_value.__aenter__.return_value = mock_client
-        
+
         from app.ollama.client import generate_embedding
         await generate_embedding("test", model="custom-model")
-        
+
         call_args = mock_client.post.call_args
         assert call_args[1]["json"]["model"] == "custom-model"
+        assert call_args[1]["json"]["truncate"] is True
 
 @pytest.mark.asyncio
 async def test_generate_embedding_raises_on_error():

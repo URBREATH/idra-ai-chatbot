@@ -17,14 +17,18 @@ class _GoldenCollection:
     def __init__(self, records):
         self.records = records
 
-    def query(self, query_embeddings, n_results, where):
+    @staticmethod
+    def _match(metadata, where):
+        # chroma where contract: flat {k: v} or {"$and": [{k: v}, ...]}
+        if not where:
+            return True
+        if "$and" in where:
+            return all(_GoldenCollection._match(metadata, clause) for clause in where["$and"])
+        return all(metadata.get(k) == v for k, v in where.items())
+
+    def query(self, query_embeddings, n_results, where, include=None, **_):
         query_embedding = query_embeddings[0]
-        filtered = []
-        for record in self.records:
-            metadata = record["metadata"]
-            if where and any(metadata.get(k) != v for k, v in where.items()):
-                continue
-            filtered.append(record)
+        filtered = [r for r in self.records if self._match(r["metadata"], where)]
 
         scored = []
         for record in filtered:
@@ -119,7 +123,9 @@ async def test_generate_answer_concurrent_load_smoke():
 
     with patch("app.chroma.client.get_tenant_collection", return_value=mock_collection):
         with patch("app.ollama.client.generate_embedding", new=AsyncMock(return_value=[0.2] * 16)):
-            with patch("app.ollama.client.generate_completion", new=AsyncMock(return_value="ok")):
+            # the answer must cite the retrieved resource (title "Load"), otherwise
+            # the guardrails replace it with the closest-resources list
+            with patch("app.ollama.client.generate_completion", new=AsyncMock(return_value="Load")):
                 start = time.perf_counter()
                 responses = await asyncio.gather(
                     *[
@@ -134,5 +140,5 @@ async def test_generate_answer_concurrent_load_smoke():
                 elapsed = time.perf_counter() - start
 
     assert len(responses) == concurrency
-    assert all(response.answer == "ok" for response in responses)
+    assert all(response.answer == "Load" for response in responses)
     assert elapsed <= max_total_seconds

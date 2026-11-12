@@ -49,7 +49,10 @@ def _split_text(text: str, size: int, overlap: int) -> list[str]:
 async def chunk_payload(payload: str, dataset_id: str, title: str = "") -> list[dict]:
     pieces = _split_text(payload, MAX_CHUNK_CHARS, CHUNK_OVERLAP)
     if not pieces:
-        pieces = [(title or "").strip() or "N/A"]
+        prefix = (title or "").strip()
+        if not prefix:
+            return []
+        pieces = [prefix]
 
     prefix = (title or "").strip()
     chunks = []

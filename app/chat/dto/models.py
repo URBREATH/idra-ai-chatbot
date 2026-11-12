@@ -27,6 +27,8 @@ class ChatResponse(BaseModel):
     sources: list[SourceReference]
     userId: str | None = None
     conversationId: str | None = None
+    # Langfuse trace of this answer (send it back with /chat/feedback)
+    traceId: str | None = None
 
 
 class ConversationMessage(BaseModel):

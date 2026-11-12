@@ -10,8 +10,9 @@ def test_get_tenant_collection_creates_correct_name():
         
         from app.chroma.client import get_tenant_collection
         result = get_tenant_collection("test_tenant_123")
-        
-        mock_client.get_or_create_collection.assert_called_once_with(name="rag_tenant_test_tenant_123")
+
+        mock_client.get_or_create_collection.assert_called_once_with(
+            name="rag_tenant_test_tenant_123", configuration={"hnsw": {"space": "cosine"}})
 
 def test_get_tenant_collection_returns_collection():
     with patch("app.chroma.client.get_client") as mock_get_client:
@@ -38,11 +39,10 @@ def test_delete_documents_from_collection():
     from app.chroma.client import delete_documents_from_collection
     delete_documents_from_collection(mock_collection, ["ds1", "ds2"])
 
-    # One delete call per dataset_id using `where` filter
-    assert mock_collection.delete.call_count == 2
-    calls = [c.kwargs for c in mock_collection.delete.call_args_list]
-    dataset_ids_deleted = {c["where"]["dataset_id"] for c in calls}
-    assert dataset_ids_deleted == {"ds1", "ds2"}
+    # single batched call with $in filter (one per 500-id batch)
+    assert mock_collection.delete.call_count == 1
+    where = mock_collection.delete.call_args.kwargs["where"]
+    assert where == {"dataset_id": {"$in": ["ds1", "ds2"]}}
 
 
 def test_delete_documents_from_collection_empty():
@@ -60,8 +60,7 @@ def test_delete_documents_from_collection_skips_none():
     from app.chroma.client import delete_documents_from_collection
     delete_documents_from_collection(mock_collection, ["ds1", None, "ds3"])
 
-    # None must be skipped; only ds1 and ds3 should be deleted
-    assert mock_collection.delete.call_count == 2
-    calls = [c.kwargs for c in mock_collection.delete.call_args_list]
-    dataset_ids_deleted = {c["where"]["dataset_id"] for c in calls}
-    assert dataset_ids_deleted == {"ds1", "ds3"}
+    # None must be skipped; single batched call with ds1 and ds3 only
+    assert mock_collection.delete.call_count == 1
+    where = mock_collection.delete.call_args.kwargs["where"]
+    assert where == {"dataset_id": {"$in": ["ds1", "ds3"]}}

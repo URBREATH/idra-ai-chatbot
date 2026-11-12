@@ -38,7 +38,7 @@ class TestSemanticEnricher:
 
     @pytest.mark.asyncio
     async def test_enrich_uses_correct_model_and_temperature(self):
-        from app.ingestion.semantic_enricher import enrich
+        from app.ingestion import semantic_enricher
 
         captured = {}
 
@@ -48,10 +48,10 @@ class TestSemanticEnricher:
             return '["term1", "term2"]'
 
         with patch("app.ingestion.semantic_enricher.generate_completion", new=capture_completion):
-            await enrich("test query")
+            await semantic_enricher.enrich("test query")
 
-        assert captured["model"] == "mixtral"
-        assert captured["temperature"] == 0.1
+        assert captured["model"] == semantic_enricher.MODEL
+        assert captured["temperature"] == semantic_enricher.TEMPERATURE
 
     @pytest.mark.asyncio
     async def test_enrich_prompt_contains_input_text(self):

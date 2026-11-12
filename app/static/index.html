@@ -250,6 +250,27 @@
 
     .message.error .bubble { border-color: rgba(255, 140, 125, .5); color: var(--danger); }
 
+    .feedback {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      color: var(--muted);
+      font: 400 11px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+    .feedback button {
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--ink);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .feedback button:hover:not(:disabled) { border-color: var(--accent); }
+    .feedback button.selected { border-color: var(--accent); background: rgba(233, 180, 76, .15); }
+    .feedback button:disabled { cursor: default; opacity: .6; }
+
     .sources {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -419,7 +440,7 @@
     elements.tenant.value = localStorage.getItem("idra-tenant") ?? "default-tenant";
     elements.conversation.value = localStorage.getItem("idra-conversation") ?? createConversationId();
 
-    function addMessage(role, content, sources = [], isError = false, durationMs = null) {
+    function addMessage(role, content, sources = [], isError = false, durationMs = null, feedbackContext = null) {
       elements.empty?.remove();
 
       const article = document.createElement("article");
@@ -474,8 +495,45 @@
         article.append(sourceGrid);
       }
 
+      if (feedbackContext) article.append(buildFeedback(feedbackContext));
+
       elements.messages.append(article);
       elements.messages.scrollTop = elements.messages.scrollHeight;
+    }
+
+    // Thumbs up/down -> POST /chat/feedback -> Langfuse score "user_feedback"
+    // on the trace of this answer (traceId returned by /chat).
+    function buildFeedback({ conversationId, traceId }) {
+      const box = document.createElement("div");
+      box.className = "feedback";
+      const label = document.createElement("span");
+      label.textContent = "Utile?";
+      const up = document.createElement("button");
+      up.type = "button"; up.textContent = "\u{1F44D}"; up.title = "Risposta utile";
+      const down = document.createElement("button");
+      down.type = "button"; down.textContent = "\u{1F44E}"; down.title = "Risposta non utile";
+      const status = document.createElement("span");
+
+      async function send(rating, button) {
+        up.disabled = down.disabled = true;
+        try {
+          const response = await fetch("/chat/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json; charset=utf-8" },
+            body: JSON.stringify({ conversationId, traceId, rating })
+          });
+          if (!response.ok) throw new Error(await parseError(response));
+          button.classList.add("selected");
+          status.textContent = "Grazie per il feedback";
+        } catch (error) {
+          up.disabled = down.disabled = false;
+          status.textContent = error.message || "Feedback non inviato";
+        }
+      }
+      up.addEventListener("click", () => send("positive", up));
+      down.addEventListener("click", () => send("negative", down));
+      box.append(label, up, down, status);
+      return box;
     }
 
     async function parseError(response) {
@@ -531,7 +589,8 @@
         if (!response.ok) throw new Error(await parseError(response));
         const result = await response.json();
         const durationMs = Math.round(performance.now() - startTime);
-        addMessage("assistant", result.answer, result.sources ?? [], false, durationMs);
+        addMessage("assistant", result.answer, result.sources ?? [], false, durationMs,
+                   { conversationId: result.conversationId || conversationId, traceId: result.traceId || null });
         if (result.conversationId) {
           elements.conversation.value = result.conversationId;
           localStorage.setItem("idra-conversation", result.conversationId);

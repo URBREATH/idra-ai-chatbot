@@ -14,7 +14,7 @@ class TestChunker:
 
         assert len(chunks) >= 1
         for chunk in chunks:
-            assert chunk["dataset_id"] == dataset_id
+            assert chunk["chunk_id"].startswith(f"{dataset_id}_chunk_")
             assert "chunk_id" in chunk
             assert "text" in chunk
             assert "FREQ" in chunk["text"] or "GEO" in chunk["text"] or "INDICATOR" in chunk["text"]
@@ -29,7 +29,7 @@ class TestChunker:
         chunks = await chunk_payload(payload, dataset_id)
 
         for chunk in chunks:
-            assert chunk["dataset_id"] == dataset_id
+            assert chunk["chunk_id"].startswith(f"{dataset_id}_chunk_")
 
     @pytest.mark.asyncio
     async def test_chunk_respects_token_limit(self):
@@ -104,4 +104,4 @@ class TestChunker:
 
         assert len(chunks) >= 1
         for chunk in chunks:
-            assert chunk["dataset_id"] == dataset_id
+            assert chunk["chunk_id"].startswith(f"{dataset_id}_chunk_")

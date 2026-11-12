@@ -5,6 +5,12 @@ from fastapi.testclient import TestClient
 from app.chat.dto.models import ChatResponse
 
 
+@pytest.fixture(autouse=True)
+def admin_token(monkeypatch):
+    # auth is a plain admin token: the token value doubles as user_id
+    monkeypatch.setenv("ADMIN_TOKEN", "user-1")
+
+
 def test_tenant_isolation_no_cross_tenant_data():
     with patch("app.chroma.client.get_client") as mock_get_client:
         mock_client = MagicMock()
@@ -12,7 +18,7 @@ def test_tenant_isolation_no_cross_tenant_data():
         tenant_a_collection = MagicMock()
         tenant_b_collection = MagicMock()
 
-        def get_collection_side_effect(name):
+        def get_collection_side_effect(name, **_):
             if name == "rag_tenant_a":
                 return tenant_a_collection
             if name == "rag_tenant_b":
@@ -41,7 +47,8 @@ async def test_tenant_collection_naming():
         from app.chroma.client import get_tenant_collection
         result = get_tenant_collection("company01")
 
-        mock_client.get_or_create_collection.assert_called_once_with(name="rag_tenant_company01")
+        mock_client.get_or_create_collection.assert_called_once_with(
+            name="rag_tenant_company01", configuration={"hnsw": {"space": "cosine"}})
 
 
 def test_tenant_resolver_defaults_to_env_tenant():
@@ -78,16 +85,15 @@ def test_chat_endpoint_uses_tenant_header():
     mocked_answer = ChatResponse(answer="ok", sources=[])
 
     with patch("app.main.conversation_repositories.initialize_conversation_indexes", new=AsyncMock()):
-        with patch("app.chat.controllers.chat_controller.extract_user_id_from_keycloak_token", return_value="user-1"):
-            with patch("app.chat.controllers.chat_controller.generate_answer", new=AsyncMock(return_value=mocked_answer)):
-                with patch("app.chat.controllers.chat_controller.conversation_services.append_user_message", new=AsyncMock()):
-                    with patch("app.chat.controllers.chat_controller.conversation_services.append_assistant_message", new=AsyncMock()):
-                        with TestClient(app) as client:
-                            response = client.post(
-                                "/chat",
-                                json={"message": "hello"},
-                                headers={"X-Tenant-Id": "my-tenant", "Authorization": "Bearer test-token"},
-                            )
+        with patch("app.chat.controllers.chat_controller.generate_answer", new=AsyncMock(return_value=mocked_answer)):
+            with patch("app.chat.controllers.chat_controller.conversation_services.append_user_message", new=AsyncMock()):
+                with patch("app.chat.controllers.chat_controller.conversation_services.append_assistant_message", new=AsyncMock()):
+                    with TestClient(app) as client:
+                        response = client.post(
+                            "/chat",
+                            json={"message": "hello", "userId": "user-1"},
+                            headers={"X-Tenant-Id": "my-tenant", "Authorization": "Bearer user-1"},
+                        )
     # No cross-tenant data should bleed; response must be a valid ChatResponse shape
     assert response.status_code == 200
     body = response.json()
@@ -101,7 +107,7 @@ def test_different_tenants_get_different_collections():
         mock_client = MagicMock()
         collections: dict = {}
 
-        def make_collection(name):
+        def make_collection(name, **_):
             if name not in collections:
                 collections[name] = MagicMock(name=name)
             return collections[name]

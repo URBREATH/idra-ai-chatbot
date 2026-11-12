@@ -8,6 +8,7 @@ from app.chat.services.chat_service import generate_answer
 from app.common.guards.tenant_guard import resolve_tenant
 from app.auth import extract_user_id_from_keycloak_token, require_admin_authorization
 from app.conversation import services as conversation_services
+from app.observability import tracing
 
 router = APIRouter()
 
@@ -34,20 +35,67 @@ async def chat_endpoint(
     conversation_id = request.conversationId or str(uuid.uuid4())
     user_id = request.userId or str(uuid.uuid4())
 
-    # generate_answer() already persists both user and assistant messages
-    # internally (via append_user_message and _respond), so we must NOT
-    # save them here as well — that would duplicate every message.
-    response = await generate_answer(
-        message=request.message,
-        conversation_id=conversation_id,
-        tenant_id=tenant_id,
-        user_id=user_id,
-        model=request.model,
-    )
+    # One Langfuse trace per answer; the conversation is the Langfuse session.
+    # A random (generated) user id is not a real user: do not send it.
+    with tracing.trace_attributes(
+        session_id=conversation_id,
+        user_id=request.userId or None,
+        tags=["chat", f"tenant:{tenant_id}"],
+        metadata={"tenant_id": tenant_id},
+        trace_name="chat",
+    ), tracing.collect_facts() as facts:
+        with tracing.observe_step(
+            "chat", as_type="agent",
+            input=tracing.io({"message": request.message, "model": request.model}),
+        ) as root:
+            # generate_answer() already persists both user and assistant messages
+            # internally (via append_user_message and _respond), so we must NOT
+            # save them here as well — that would duplicate every message.
+            response = await generate_answer(
+                message=request.message,
+                conversation_id=conversation_id,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                model=request.model,
+            )
+            tracing.safe_update(root, output=tracing.io({
+                "answer": response.answer,
+                "sources": [{"title": s.title, "datasetId": s.datasetId, "url": s.url} for s in response.sources],
+            }), metadata=dict(facts))
+            emit_chat_scores(root, facts)
+            response.traceId = root.trace_id
 
     # Ensure response includes conversation ID
     response.conversationId = conversation_id
     return response
+
+
+def emit_chat_scores(root, facts: dict) -> None:
+    """Automatic, per-trace scores: aggregatable in Langfuse dashboards to study
+    retrieval quality and pipeline behaviour statistically."""
+    numeric = {
+        "retrieval_best_distance": facts.get("best_distance"),
+        "retrieval_candidates_kept": facts.get("candidates_kept"),
+        "retrieval_threshold_final": facts.get("threshold_final"),
+        "answer_sources": facts.get("sources_returned"),
+        "context_resources": facts.get("context_resources"),
+        "invented_links_removed": facts.get("invented_links"),
+    }
+    for name, value in numeric.items():
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            tracing.score_trace(root, name, float(value), data_type="NUMERIC")
+    booleans = {
+        "retrieval_threshold_relaxed": facts.get("threshold_relaxed"),
+        "answer_no_result": facts.get("exit_path") == "no_result" if "exit_path" in facts else None,
+        "answer_cited_resource": facts.get("cited_resource"),
+        "nbs_mode": facts.get("nbs_mode"),
+    }
+    for name, value in booleans.items():
+        if isinstance(value, bool):
+            tracing.score_trace(root, name, value)
+    for name, key in (("exit_path", "exit_path"), ("language", "language"), ("rerank_method", "rerank_method")):
+        if facts.get(key):
+            tracing.score_trace(root, name, str(facts[key]), data_type="CATEGORICAL")
 
 
 @router.get("/models")

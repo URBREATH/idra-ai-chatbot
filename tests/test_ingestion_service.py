@@ -45,7 +45,7 @@ async def test_ingest_tenant_skips_empty_text():
 @pytest.mark.asyncio
 async def test_ingest_tenant_uses_dataset_id():
     mock_datasets = [
-        {"_id": {"id": "urn:ngsi-ld:Dataset:123"}, "title": "Test Dataset"}
+        {"_id": {"id": "urn:ngsi-ld:Dataset:123", "type": "Dataset"}, "title": "Test Dataset"}
     ]
     
     mock_collection = MagicMock()

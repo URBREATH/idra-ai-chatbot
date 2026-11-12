@@ -8,8 +8,12 @@ class FakeChromaCollection:
     def __init__(self):
         self.records = []
 
-    def upsert(self, ids, embeddings, metadatas, documents):
+    def count(self):
+        return len(self.records)
+
+    def upsert(self, ids, embeddings, metadatas, documents, **_):
         for doc_id, emb, meta, doc in zip(ids, embeddings, metadatas, documents):
+            self.records = [r for r in self.records if r["id"] != doc_id]
             self.records.append(
                 {
                     "id": doc_id,
@@ -20,20 +24,24 @@ class FakeChromaCollection:
             )
 
     def delete(self, where):
-        dataset_id = where.get("dataset_id") if where else None
-        if dataset_id is None:
+        value = (where or {}).get("dataset_id")
+        ids = value.get("$in") if isinstance(value, dict) else ([value] if value else [])
+        if not ids:
             return
-        self.records = [r for r in self.records if r["metadata"].get("dataset_id") != dataset_id]
+        self.records = [r for r in self.records if r["metadata"].get("dataset_id") not in ids]
 
-    def query(self, query_embeddings, n_results, where):
+    @staticmethod
+    def _match(metadata, where):
+        if not where:
+            return True
+        if "$and" in where:
+            return all(FakeChromaCollection._match(metadata, clause) for clause in where["$and"])
+        return all(metadata.get(k) == v for k, v in where.items())
+
+    def query(self, query_embeddings, n_results, where, include=None, **_):
         query_embedding = query_embeddings[0]
 
-        filtered = []
-        for record in self.records:
-            metadata = record["metadata"]
-            if where and any(metadata.get(k) != v for k, v in where.items()):
-                continue
-            filtered.append(record)
+        filtered = [r for r in self.records if self._match(r["metadata"], where)]
 
         scored = []
         for record in filtered:

@@ -87,6 +87,48 @@ async def get_deleted_dataset_ids(tenant_id: str, last_ingestion: datetime) -> L
     return ids
 
 
+# ---------------------------------------------------------------------------
+# NBS case studies (source "mongo_nbs").
+# They live only in the Orion-LD MongoDB, not in the Idra MySQL DB, so when the
+# ingestion reads the catalogue from MySQL it still pulls these from Orion.
+# ORION_MONGODB_URI/ORION_MONGODB_DB let this point at the Orion Mongo without
+# touching the database used for conversations (MONGODB_URI).
+# ---------------------------------------------------------------------------
+ORION_MONGODB_URI = os.getenv("ORION_MONGODB_URI", "").strip()
+ORION_MONGODB_DB = os.getenv("ORION_MONGODB_DB", "orion").strip() or "orion"
+NBS_ID_PATTERN = os.getenv("NBS_ID_PATTERN", ":nbs:")
+_orion_db = None
+
+
+def _get_orion_db():
+    global _orion_db
+    if not ORION_MONGODB_URI:
+        return db
+    if _orion_db is None:
+        from motor.motor_asyncio import AsyncIOMotorClient
+        _orion_db = AsyncIOMotorClient(ORION_MONGODB_URI)[ORION_MONGODB_DB]
+    return _orion_db
+
+
+def _nbs_filter() -> Dict[str, Any]:
+    f = _base_filter()
+    f["_id.id"] = {"$regex": re.escape(NBS_ID_PATTERN), "$options": "i"}
+    return f
+
+
+async def get_nbs_entities() -> List[Dict[str, Any]]:
+    collection = _get_orion_db()[COLLECTION or "entities"]
+    docs = await collection.find(_nbs_filter()).to_list(length=None)
+    logger.debug(f"[mongo] get_nbs_entities -> {len(docs)} NBS entities")
+    return docs
+
+
+async def get_nbs_entity_ids() -> List[str]:
+    collection = _get_orion_db()[COLLECTION or "entities"]
+    records = await collection.find(_nbs_filter(), projection={"_id": 1}).to_list(length=None)
+    return [r["_id"]["id"] for r in records if r.get("_id", {}).get("id") is not None]
+
+
 async def get_all_dataset_ids(tenant_id: str) -> List[str]:
     # Nessun filtro di tipo: pulizia completa in Chroma prima del reinserimento.
     collection = db[COLLECTION]

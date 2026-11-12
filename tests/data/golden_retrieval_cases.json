@@ -3,30 +3,47 @@
     "name": "employment-rate-query",
     "tenant_id": "tenant_golden",
     "query": "tasso di occupazione giovanile in Italia",
-    "query_embedding": [0.9, 0.8, 0.7, 0.6],
+    "query_embedding": [
+      0.9,
+      0.8,
+      0.7,
+      0.6
+    ],
     "expected_dataset_id": "ds_employment_youth",
     "records": [
       {
         "id": "ds_employment_youth_chunk_1",
-        "embedding": [0.9, 0.8, 0.7, 0.6],
+        "embedding": [
+          0.9,
+          0.8,
+          0.7,
+          0.6
+        ],
         "metadata": {
           "tenant_id": "tenant_golden",
           "dataset_id": "ds_employment_youth",
           "title": "Occupazione giovanile",
           "publisher": "ISTAT",
-          "url": "https://example.org/employment"
+          "url": "https://example.org/employment",
+          "entity_type": "Dataset"
         },
-        "document": "Occupazione giovanile in Italia per classe di et\u00e0 e territorio"
+        "document": "Occupazione giovanile in Italia per classe di età e territorio"
       },
       {
         "id": "ds_noise_chunk_1",
-        "embedding": [0.1, 0.2, 0.3, 0.4],
+        "embedding": [
+          0.1,
+          0.2,
+          0.3,
+          0.4
+        ],
         "metadata": {
           "tenant_id": "tenant_golden",
           "dataset_id": "ds_noise",
           "title": "Inquinamento acustico",
           "publisher": "Comune",
-          "url": "https://example.org/noise"
+          "url": "https://example.org/noise",
+          "entity_type": "Dataset"
         },
         "document": "Mappa del rumore urbano"
       }
@@ -35,31 +52,48 @@
   {
     "name": "air-quality-query",
     "tenant_id": "tenant_golden",
-    "query": "dataset PM10 qualit\u00e0 dell'aria",
-    "query_embedding": [0.2, 0.3, 0.4, 0.5],
+    "query": "dataset PM10 qualità dell'aria",
+    "query_embedding": [
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
     "expected_dataset_id": "ds_air_quality_pm10",
     "records": [
       {
         "id": "ds_air_quality_pm10_chunk_1",
-        "embedding": [0.2, 0.3, 0.4, 0.5],
+        "embedding": [
+          0.2,
+          0.3,
+          0.4,
+          0.5
+        ],
         "metadata": {
           "tenant_id": "tenant_golden",
           "dataset_id": "ds_air_quality_pm10",
-          "title": "Qualit\u00e0 dell'aria PM10",
+          "title": "Qualità dell'aria PM10",
           "publisher": "ARPA",
-          "url": "https://example.org/pm10"
+          "url": "https://example.org/pm10",
+          "entity_type": "Dataset"
         },
         "document": "Serie storica PM10 e NO2"
       },
       {
         "id": "ds_water_chunk_1",
-        "embedding": [0.8, 0.8, 0.8, 0.8],
+        "embedding": [
+          0.8,
+          0.8,
+          0.8,
+          0.8
+        ],
         "metadata": {
           "tenant_id": "tenant_golden",
           "dataset_id": "ds_water",
-          "title": "Qualit\u00e0 acque",
+          "title": "Qualità acque",
           "publisher": "Regione",
-          "url": "https://example.org/water"
+          "url": "https://example.org/water",
+          "entity_type": "Dataset"
         },
         "document": "Monitoraggio acque superficiali"
       }
