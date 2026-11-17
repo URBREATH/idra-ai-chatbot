@@ -19,6 +19,15 @@ def get_tenant_collection(tenant_id: str):
     client = get_client()
     return client.get_or_create_collection(name=collection_name, configuration={"hnsw": {"space": "cosine"}})
 
+def reset_tenant_collection(tenant_id: str):
+    collection_name = f"rag_tenant_{tenant_id}"
+    client = get_client()
+    try:
+        client.delete_collection(name=collection_name)
+    except Exception:
+        pass
+    return client.get_or_create_collection(name=collection_name, configuration={"hnsw": {"space": "cosine"}})
+
 def delete_documents_from_collection(collection, dataset_ids, batch_size: int = 500) -> None:
     """Cancella da Chroma tutti i chunk delle entita' indicate, filtrando per
     dataset_id (non per chunk_id), cosi' non restano chunk orfani."""

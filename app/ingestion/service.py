@@ -22,7 +22,7 @@ from .sources import (
 )
 from ..ollama.client import generate_embedding
 from ..observability import tracing
-from ..chroma.client import get_tenant_collection, delete_documents_from_collection, get_indexed_hashes
+from ..chroma.client import get_tenant_collection, reset_tenant_collection, delete_documents_from_collection, get_indexed_hashes
 
 load_dotenv()
 
@@ -306,7 +306,8 @@ async def _run_incremental(tenant_id: str, full_reindex: bool = False,
             dataset_ids = list(dict.fromkeys(list(await get_all_dataset_ids(tenant_id)) + list(indexed)))
             logger.debug(f"[full_reindex] deleting {len(dataset_ids)} entities")
             _delete_from_collection(collection, dataset_ids)
-            logger.debug(f"[full_reindex] records after deletion: {collection.count()}")
+            collection = reset_tenant_collection(tenant_id)
+            logger.debug(f"[full_reindex] records after deletion/reset: {collection.count()}")
             tracing.safe_update(obs, output={"deleted_entities": len(dataset_ids)})
         indexed = {}
 

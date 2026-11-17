@@ -128,17 +128,25 @@ async def health(response: Response):
             if client is not None:
                 client.close()
 
-    async def _check(url):
+    async def _check(url, headers=None):
         try:
-            async with httpx.AsyncClient(timeout=2.0) as http:
-                r = await http.get(url)
+            async with httpx.AsyncClient(timeout=3.0) as http:
+                r = await http.get(url, headers=headers)
             return "UP" if r.status_code == 200 else "DOWN"
         except httpx.HTTPError:
             return "DOWN"
 
+    from app.ollama.client import is_external_api_enabled, get_api_base, _auth_headers
+    if is_external_api_enabled():
+        ollama_url = f"{get_api_base()}/models"
+        ollama_headers = _auth_headers()
+    else:
+        ollama_url = f"http://{settings.ollama_host}:{settings.ollama_port}/api/tags"
+        ollama_headers = None
+
     mongo  = await asyncio.to_thread(_ping_mongo)
     chroma = await _check(chroma_url)
-    ollama = await _check(ollama_url)
+    ollama = await _check(ollama_url, headers=ollama_headers)
 
     checks = {"mongo": mongo, "chroma": chroma, "ollama": ollama}
     if uses_mysql():
