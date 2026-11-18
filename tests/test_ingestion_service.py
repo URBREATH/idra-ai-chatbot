@@ -14,7 +14,7 @@ async def test_ingest_tenant_processes_datasets():
     with patch("app.ingestion.service.get_datasets_since", new=AsyncMock(return_value=mock_datasets)):
         with patch("app.ingestion.service.get_deleted_dataset_ids", new=AsyncMock(return_value=[])):
             with patch("app.ingestion.service.get_all_dataset_ids", new=AsyncMock(return_value=[])):
-                with patch("app.ingestion.service.generate_embedding", new=AsyncMock(return_value=[0.1] * 1024)):
+                with patch("app.ingestion.service.generate_batch_embeddings", new=AsyncMock(side_effect=lambda texts: [[0.1] * 1024 for _ in texts])):
                     with patch("app.ingestion.service.get_tenant_collection", return_value=mock_collection):
                         from app.ingestion.service import ingest_tenant
                         result = await ingest_tenant("tenant_abc")
@@ -34,7 +34,7 @@ async def test_ingest_tenant_skips_empty_text():
     with patch("app.ingestion.service.get_datasets_since", new=AsyncMock(return_value=mock_datasets)):
         with patch("app.ingestion.service.get_deleted_dataset_ids", new=AsyncMock(return_value=[])):
             with patch("app.ingestion.service.get_all_dataset_ids", new=AsyncMock(return_value=[])):
-                with patch("app.ingestion.service.generate_embedding", new=AsyncMock(return_value=[0.1] * 1024)):
+                with patch("app.ingestion.service.generate_batch_embeddings", new=AsyncMock(side_effect=lambda texts: [[0.1] * 1024 for _ in texts])):
                     with patch("app.ingestion.service.get_tenant_collection", return_value=mock_collection):
                         from app.ingestion.service import ingest_tenant
                         await ingest_tenant("tenant_abc")
@@ -53,7 +53,7 @@ async def test_ingest_tenant_uses_dataset_id():
     with patch("app.ingestion.service.get_datasets_since", new=AsyncMock(return_value=mock_datasets)):
         with patch("app.ingestion.service.get_deleted_dataset_ids", new=AsyncMock(return_value=[])):
             with patch("app.ingestion.service.get_all_dataset_ids", new=AsyncMock(return_value=[])):
-                with patch("app.ingestion.service.generate_embedding", new=AsyncMock(return_value=[0.1] * 1024)):
+                with patch("app.ingestion.service.generate_batch_embeddings", new=AsyncMock(side_effect=lambda texts: [[0.1] * 1024 for _ in texts])):
                     with patch("app.ingestion.service.get_tenant_collection", return_value=mock_collection):
                         from app.ingestion.service import ingest_tenant
                         await ingest_tenant("tenant_xyz")
@@ -69,7 +69,7 @@ async def test_ingest_tenant_creates_correct_collection_name():
     with patch("app.ingestion.service.get_datasets_since", new=AsyncMock(return_value=mock_datasets)):
         with patch("app.ingestion.service.get_deleted_dataset_ids", new=AsyncMock(return_value=[])):
             with patch("app.ingestion.service.get_all_dataset_ids", new=AsyncMock(return_value=[])):
-                with patch("app.ingestion.service.generate_embedding", new=AsyncMock(return_value=[0.1] * 1024)):
+                with patch("app.ingestion.service.generate_batch_embeddings", new=AsyncMock(side_effect=lambda texts: [[0.1] * 1024 for _ in texts])):
                     with patch("app.ingestion.service.get_tenant_collection") as mock_get_collection:
                         mock_collection = MagicMock()
                         mock_get_collection.return_value = mock_collection
@@ -107,7 +107,7 @@ async def test_ingest_tenant_returns_result():
     with patch("app.ingestion.service.get_datasets_since", new=AsyncMock(return_value=mock_datasets)):
         with patch("app.ingestion.service.get_deleted_dataset_ids", new=AsyncMock(return_value=[])):
             with patch("app.ingestion.service.get_all_dataset_ids", new=AsyncMock(return_value=[])):
-                with patch("app.ingestion.service.generate_embedding", new=AsyncMock(return_value=[0.1] * 1024)):
+                with patch("app.ingestion.service.generate_batch_embeddings", new=AsyncMock(side_effect=lambda texts: [[0.1] * 1024 for _ in texts])):
                     with patch("app.ingestion.service.get_tenant_collection", return_value=mock_collection):
                         from app.ingestion.service import ingest_tenant
                         result = await ingest_tenant("tenant_abc")

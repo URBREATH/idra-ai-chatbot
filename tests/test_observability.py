@@ -219,7 +219,7 @@ async def test_ingestion_emits_run_and_entity_traces(exporter):
          patch.object(service, "get_deleted_dataset_ids", new=AsyncMock(return_value=[])), \
          patch.object(service, "get_all_dataset_ids", new=AsyncMock(return_value=["ds1"])), \
          patch.object(service, "build_payload", new=AsyncMock(return_value="Trees urban")), \
-         patch.object(service, "generate_embedding", new=AsyncMock(return_value=[0.1] * 4)):
+         patch.object(service, "generate_batch_embeddings", new=AsyncMock(side_effect=lambda texts: [[0.1] * 4 for _ in texts])):
         result = await service.ingest_tenant("t")
     assert result["total_datasets"] == 1
 

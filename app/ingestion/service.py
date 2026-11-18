@@ -20,7 +20,7 @@ from .sources import (
     get_deleted_dataset_ids,
     get_all_dataset_ids
 )
-from ..ollama.client import generate_embedding
+from ..ollama.client import generate_batch_embeddings
 from ..observability import otel, tracing
 from ..chroma.client import get_tenant_collection, reset_tenant_collection, delete_documents_from_collection, get_indexed_hashes
 
@@ -192,8 +192,11 @@ async def _process_dataset(ds: Dict[str, Any], tenant_id: str,
                               input=tracing.io({"texts": [c["text"] for c in chunks]}),
                               metadata={"chunks": len(chunks),
                                         "model": os.getenv("OLLAMA_EMBEDDING_MODEL", "")}) as emb_obs:
-        for chunk in chunks:
-            embed = await generate_embedding(chunk["text"])
+        texts = [c["text"] for c in chunks]
+        embeddings = await generate_batch_embeddings(texts)
+        if len(embeddings) != len(chunks):
+            raise ValueError(f"expected {len(chunks)} embeddings, got {len(embeddings)}")
+        for chunk, embed in zip(chunks, embeddings):
             candidate_metadata = {
                 "tenant_id": tenant_id,
                 "dataset_id": dataset_id,

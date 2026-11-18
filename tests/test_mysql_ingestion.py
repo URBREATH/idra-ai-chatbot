@@ -134,7 +134,7 @@ async def test_incremental_skips_unchanged_and_removes_stale():
          patch.object(service, "get_deleted_dataset_ids", new=AsyncMock(return_value=[])), \
          patch.object(service, "get_all_dataset_ids", new=AsyncMock(return_value=["arbres-96", "d1"])), \
          patch.object(service, "build_payload", new=AsyncMock(return_value="text")), \
-         patch.object(service, "generate_embedding", new=AsyncMock(return_value=[0.1] * 4)), \
+         patch.object(service, "generate_batch_embeddings", new=AsyncMock(side_effect=lambda texts: [[0.1] * 4 for _ in texts])), \
          patch.object(service, "delete_documents_from_collection") as mock_delete:
         result = await service.ingest_tenant("t")
 

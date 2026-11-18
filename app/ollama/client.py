@@ -419,8 +419,64 @@ async def generate_batch_embeddings(
                 input_tokens=total_tokens, success=success, error_type=error_type,
             )
 
-    # Fallback Ollama sequential
-    results = []
-    for text in texts:
-        results.append(await generate_embedding(text, model=effective_model))
-    return results
+    # Ollama: send the texts in batches (default 500) to /api/embed, which
+    # accepts a list as `input` and returns one vector per text.
+    batch_size = int(os.getenv("EMBEDDING_BATCH_SIZE", "500"))
+    results: list[list[float]] = []
+    total_tokens = 0
+    started = time.perf_counter()
+    success = False
+    error_type = None
+    try:
+        with tracing.observe_step("llm.embedding_batch", as_type="embedding",
+                                  model=effective_model,
+                                  input=tracing.io({"texts": texts, "batch_size": batch_size}),
+                                  metadata={"provider": "ollama", "endpoint": f"{OLLAMA_BASE_URL}/api/embed",
+                                            "characters": sum(len(t or "") for t in texts)}) as obs:
+            async with httpx.AsyncClient() as client:
+                batches = []
+                for i in range(0, len(texts), batch_size):
+                    batch = texts[i:i + batch_size]
+                    batches.append(batch)
+                    try:
+                        data, _ = await _post_with_retry(
+                            client,
+                            f"{OLLAMA_BASE_URL}/api/embed",
+                            {"model": effective_model, "input": batch,
+                             "truncate": True, "keep_alive": OLLAMA_KEEP_ALIVE},
+                        )
+                        embs = data.get("embeddings") or []
+                        if len(embs) != len(batch):
+                            raise ValueError(f"expected {len(batch)} embeddings, got {len(embs)}")
+                        results.extend(embs)
+                        pec = data.get("prompt_eval_count")
+                        if isinstance(pec, int):
+                            total_tokens += pec
+                    except Exception as exc:
+                        logger.warning("Batch embedding failed (%s), falling back to one-by-one", exc)
+                        for t in batch:
+                            results.append(await generate_embedding(t, model=effective_model))
+            tracing.record_usage(effective_model, "embedding", input_tokens=total_tokens or None)
+            cost_details = tracing.token_cost("embedding", total_tokens or None, None,
+                                              model=effective_model)
+            otel.set_gen_ai_attributes(
+                system="ollama", operation="embeddings", request_model=effective_model,
+                input_tokens=total_tokens,
+            )
+            tracing.safe_update(obs, output={"vectors": len(results),
+                                             "prompt_tokens": total_tokens or None},
+                                metadata={"provider": "ollama", "endpoint": f"{OLLAMA_BASE_URL}/api/embed",
+                                          "batches": len(batches), "batch_size": batch_size,
+                                          "characters": sum(len(t or "") for t in texts)},
+                                cost_details=cost_details)
+            success = True
+        return results
+    except Exception as exc:
+        error_type = type(exc).__name__
+        raise
+    finally:
+        otel.record_llm_call(
+            system="ollama", operation="embeddings", model=effective_model,
+            duration_s=time.perf_counter() - started,
+            input_tokens=total_tokens, success=success, error_type=error_type,
+        )

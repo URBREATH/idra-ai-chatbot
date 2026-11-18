@@ -67,6 +67,10 @@ async def _fake_embedding(text: str) -> list[float]:
     return [base, base + 0.1, base + 0.2, base + 0.3, base + 0.4, base + 0.5, base + 0.6, base + 0.7]
 
 
+async def _fake_batch_embeddings(texts: list[str]) -> list[list[float]]:
+    return [await _fake_embedding(t) for t in texts]
+
+
 @pytest.mark.asyncio
 async def test_dcp2_like_ingestion_and_retrieval_flow():
     dataset_id = "urn:ngsi-ld:Dataset:istat:labour:employment-rate-youth"
@@ -117,7 +121,7 @@ async def test_dcp2_like_ingestion_and_retrieval_flow():
             with patch("app.ingestion.service.get_all_dataset_ids", new=AsyncMock(return_value=[])):
                 with patch("app.ingestion.service.get_tenant_collection", return_value=fake_collection):
                     with patch("app.chroma.client.get_tenant_collection", return_value=fake_collection):
-                        with patch("app.ingestion.service.generate_embedding", new=AsyncMock(side_effect=_fake_embedding)):
+                        with patch("app.ingestion.service.generate_batch_embeddings", new=AsyncMock(side_effect=_fake_batch_embeddings)):
                             with patch("app.ollama.client.generate_embedding", new=AsyncMock(side_effect=_fake_embedding)):
                                 from app.ingestion.service import ingest_tenant
                                 from app.retrieval.embeddings.query_embedder import embed_query
