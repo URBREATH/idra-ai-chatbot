@@ -84,6 +84,54 @@ async def test_generation_records_model_usage_and_timings(exporter):
     assert _attr(span, "langfuse.observation.metadata.tokens_per_second") is not None
 
 
+@pytest.mark.asyncio
+async def test_embedding_captures_exact_input_and_request(exporter, monkeypatch):
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    exp, client = exporter
+    resp = MagicMock()
+    resp.raise_for_status = MagicMock()
+    resp.json.return_value = {"embeddings": [[0.1, 0.2]], "prompt_eval_count": 7}
+    with patch("httpx.AsyncClient") as cls:
+        http = AsyncMock()
+        http.post.return_value = resp
+        cls.return_value.__aenter__.return_value = http
+        from app.ollama.client import generate_embedding
+        await generate_embedding("Testo esatto per l'embedding", model="mxbai-embed-large")
+    span = next(s for s in _spans(exp, client) if s.name == "llm.embedding")
+    assert _attr(span, "langfuse.observation.input") == "Testo esatto per l'embedding"
+    assert _attr(span, "langfuse.observation.model.name") == "mxbai-embed-large"
+    assert json.loads(_attr(span, "langfuse.observation.metadata.provider")) == "ollama"
+    request = json.loads(_attr(span, "langfuse.observation.metadata.request"))
+    assert request["model"] == "mxbai-embed-large"
+    assert request["input"] == "Testo esatto per l'embedding"
+
+
+@pytest.mark.asyncio
+async def test_enrichment_captures_exact_rendered_prompt(exporter, monkeypatch):
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    exp, client = exporter
+    resp = MagicMock()
+    resp.raise_for_status = MagicMock()
+    resp.json.return_value = {"message": {"content": '["occupazione", "lavoro"]'},
+                              "prompt_eval_count": 11, "eval_count": 4, "done_reason": "stop"}
+    with patch("httpx.AsyncClient") as cls:
+        http = AsyncMock()
+        http.post.return_value = resp
+        cls.return_value.__aenter__.return_value = http
+        from app.ingestion.semantic_enricher import enrich
+        await enrich("occupazione giovanile")
+    spans = _spans(exp, client)
+    generation = next(s for s in spans if s.name == "llm.enrichment")
+    messages = json.loads(_attr(generation, "langfuse.observation.input"))
+    assert messages[0]["role"] == "user"
+    assert "occupazione giovanile" in messages[0]["content"]
+    span = next(s for s in spans if s.name == "ingestion.semantic_enrichment")
+    payload = json.loads(_attr(span, "langfuse.observation.input"))
+    assert payload["text"] == "occupazione giovanile"
+    assert payload["prompt"] == messages[0]["content"]
+    assert json.loads(_attr(generation, "langfuse.observation.metadata.prompt_name")) == "ingestion_semantic_enrichment"
+
+
 def test_chat_endpoint_emits_pipeline_trace(exporter):
     exp, client = exporter
     from fastapi.testclient import TestClient
@@ -187,3 +235,53 @@ async def test_ingestion_emits_run_and_entity_traces(exporter):
     assert upsert.context.trace_id == run.context.trace_id      # phases belong to the run trace
     assert _attr(entity, "session.id") == _attr(run, "session.id")
     assert json.loads(_attr(run, "langfuse.observation.output"))["total_datasets"] == 1
+
+
+def test_metrics_collector_merges_nested_usage_and_timings():
+    with tracing.collect_metrics() as run_metrics:
+        with tracing.observe_step("phase.one"):
+            pass
+        with tracing.collect_metrics() as entity_metrics:
+            tracing.record_usage("mistral", "generation", input_tokens=10, output_tokens=5)
+            tracing.record_usage("mxbai", "embedding", input_tokens=20)
+        entity_summary = tracing.metrics_summary(entity_metrics)
+        assert entity_summary["usage"]["total"] == 35
+        assert entity_summary["calls"] == {"generation": 1, "embedding": 1}
+
+    summary = tracing.metrics_summary(run_metrics)
+    assert summary["usage"] == {"input": 30, "output": 5, "total": 35}
+    assert summary["models"]["mistral"]["total"] == 15
+    assert summary["models"]["mxbai"]["total"] == 20
+    assert "phase.one" in summary["timings_ms"]
+
+
+def test_otel_endpoint_resolution(monkeypatch):
+    from app.observability import otel
+
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", raising=False)
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector:4318/")
+    assert otel._signal_endpoint("traces") == "http://collector:4318/v1/traces"
+    assert otel._signal_endpoint("metrics") == "http://collector:4318/v1/metrics"
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://x/custom")
+    assert otel._signal_endpoint("traces") == "http://x/custom"
+
+
+def test_structlog_processor_adds_trace_context_and_redacts_secrets(monkeypatch):
+    from app.observability import otel
+
+    monkeypatch.setenv("OTEL_REDACT_PII", "true")
+    event = otel.trace_context_processor(
+        None, "info",
+        {"authorization": "Bearer secret", "password": "p", "email": "user@example.com",
+         "message": "hello", "trace_id": "keep-me"},
+    )
+    assert event["authorization"] == "[redacted]"
+    assert event["password"] == "[redacted]"
+    assert event["email"] == "[redacted-email]"
+    assert event["trace_id"] == "keep-me"
+
+
+def test_otel_current_ids_outside_span_are_none():
+    from app.observability import otel
+
+    assert otel.current_ids() == (None, None)

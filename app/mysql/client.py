@@ -13,6 +13,8 @@ from typing import Any, Dict, List
 
 from dotenv import load_dotenv
 
+from app.observability import otel
+
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -57,11 +59,13 @@ def _fetch_many_sync(queries: Dict[str, str]) -> Dict[str, List[Dict[str, Any]]]
         conn.close()
 
 
+@otel.traced_db("fetch_many", "mysql", namespace=MYSQL_DATABASE)
 async def fetch_many(queries: Dict[str, str]) -> Dict[str, List[Dict[str, Any]]]:
     """Run several SELECTs on one connection. Returns {name: rows}."""
     return await asyncio.to_thread(_fetch_many_sync, queries)
 
 
+@otel.traced_db_sync("ping", "mysql", namespace=MYSQL_DATABASE)
 def ping_sync() -> bool:
     try:
         conn = _connect()

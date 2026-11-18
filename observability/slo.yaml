@@ -1,0 +1,96 @@
+# =============================================================================
+# SLO, budget e regole di alert per il deployment piccolo di Idra AI Chatbot.
+#
+# Questo file e' la fonte di verita' per dashboard e alert. Non viene letto
+# dall'applicazione: le soglie vanno riportate nel backend scelto (Langfuse,
+# Grafana, Prometheus/Alertmanager, ecc.).
+#
+# Le espressioni PromQL assumono i nomi generati dagli strumenti OTel
+# (`http.server.request.duration` -> http_server_request_duration_*,
+# `gen_ai.client.token.usage` -> gen_ai_client_token_usage_*).
+# =============================================================================
+service: idra-ai-chatbot-observation
+window: 30d
+
+budget:
+  # Tetto massimo dichiarato per i modelli LLM remoti (input + output).
+  monthly_llm_tokens: 10000000
+  warning_percent: 80
+  critical_percent: 100
+  # Nessun blocco automatico: l'app registra solo il consumo.
+  enforce_hard_limit: false
+
+slos:
+  chat:
+    latency_p95_seconds: 15
+    latency_p99_seconds: 30
+    error_rate_percent: 2
+    llm_error_rate_percent: 1
+  retrieval:
+    latency_p95_seconds: 1.5
+    min_precision_proxy: 0.5
+  ingestion:
+    success_rate_percent: 98
+    duration_p95_seconds: 900
+  observability:
+    # Percentuale minima di export OTLP riusciti verso collector/Langfuse.
+    export_success_rate_percent: 99
+    max_dropped_spans_per_hour: 100
+
+alerts:
+  - name: IdraChatLatencyHigh
+    severity: warning
+    for: 10m
+    expr: >-
+      histogram_quantile(0.95,
+        sum by (le) (rate(http_server_request_duration_bucket{http_route=~".*chat.*"}[5m]))
+      ) > 15
+
+  - name: IdraChatErrorRateHigh
+    severity: critical
+    for: 5m
+    expr: >-
+      sum(rate(idra_errors_total[5m]))
+      /
+      clamp_min(sum(rate(idra_http_requests_total[5m])), 0.001)
+      > 0.02
+
+  - name: IdraLlmErrorRateHigh
+    severity: warning
+    for: 10m
+    expr: >-
+      sum(rate(idra_errors_total{idra_component=~"llm\\..*"}[5m])) > 0.05
+
+  - name: IdraRetrievalLatencyHigh
+    severity: warning
+    for: 10m
+    expr: >-
+      histogram_quantile(0.95,
+        sum by (le) (rate(idra_retrieval_duration_bucket[5m]))
+      ) > 1.5
+
+  - name: IdraIngestionSlow
+    severity: warning
+    for: 15m
+    expr: >-
+      histogram_quantile(0.95,
+        sum by (le) (rate(idra_ingestion_duration_bucket[15m]))
+      ) > 900
+
+  - name: IdraMonthlyTokenBudgetWarning
+    severity: warning
+    for: 1h
+    expr: >-
+      sum(increase(gen_ai_client_token_usage_sum[30d])) > 8000000
+
+  - name: IdraMonthlyTokenBudgetExceeded
+    severity: critical
+    for: 1h
+    expr: >-
+      sum(increase(gen_ai_client_token_usage_sum[30d])) > 10000000
+
+  - name: IdraOtelExportFailures
+    severity: warning
+    for: 10m
+    expr: >-
+      sum(rate(otelcol_exporter_send_failed_spans[5m])) > 0.1

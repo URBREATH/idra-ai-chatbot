@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import re                                    # [NEW] per estrarre i link dalle risposte
+import time
 import unicodedata                           # [NEW] confronto dei titoli senza accenti
 import uuid
 import logging
@@ -21,10 +22,12 @@ from app.conversation import services as conversation_services
 from app.config.config import (
     SYSTEM_INSTRUCTIONS, NO_RESULT_INSTRUCTIONS, RELAXED_NOTICE, NBS_INSTRUCTIONS,
     PROBLEM_TO_NBS, FORMAT_CANON, LINK_REMINDER, NBS_DECISION_REMINDER,
+    LANGUAGE_DETECTION_PROMPT,
     _NBS_INTENT, _REFERENCE_MARKERS, _REACTION_MARKERS,
 )
 from app.instructions.nbs_instructions import is_nbs_question
-from app.observability import tracing
+from app.observability import otel, tracing
+from app.prompts import prompt_metadata
 
 load_dotenv()
 
@@ -362,12 +365,7 @@ def build_prompt(
 
 
 
-_LANGUAGE_DETECTION_PROMPT = (
-    "Identify the language of the user message below. Return ONLY its lowercase "
-    "ISO 639-1 two-letter code, with no punctuation or explanation. Detect the "
-    "language from the message itself, not from the topic or named entities.\n\n"
-    "User message as a JSON string:\n{message}\n\nLanguage code:"
-)
+_LANGUAGE_DETECTION_PROMPT = LANGUAGE_DETECTION_PROMPT
 
 
 def _detect_language_locally(text: str) -> tuple[str | None, float, float]:
@@ -413,7 +411,8 @@ async def _detect_language_with_llm(text: str, model: str | None = None) -> str 
 
 async def _detect_language(text: str, model: str | None = None) -> str | None:
     with tracing.observe_step("chat.language_detection", as_type="span",
-                              input=tracing.io(text)) as obs:
+                              input=tracing.io(text),
+                              metadata=prompt_metadata("chat_language_detection")) as obs:
         code, method, confidence, margin = await _detect_language_impl(text, model=model)
         tracing.safe_update(obs, output=code, metadata={
             "method": method, "confidence": round(confidence, 4), "margin": round(margin, 4),
@@ -637,6 +636,7 @@ async def generate_answer(
     documents, metadatas, distances = [], [], []
     threshold, relaxed = DISTANCE_THRESHOLD, False
     where = {"is_nbs": True} if nbs else None
+    retrieval_started = time.perf_counter()
     with tracing.observe_step("retrieval.search", as_type="retriever",
                               input=tracing.io({"search_text": search_text, "original": message}),
                               metadata={"where": where, "n_results": DEFAULT_N_RESULTS,
@@ -693,6 +693,14 @@ async def generate_answer(
         if no_result_reason:
             tracing.safe_update(ret, level="WARNING", status_message=no_result_reason)
 
+    facts_now = tracing.get_facts()
+    otel.record_retrieval(
+        time.perf_counter() - retrieval_started,
+        candidates=int(facts_now.get("candidates") or 0),
+        kept=int(facts_now.get("candidates_kept") or 0),
+        best_distance=facts_now.get("best_distance"),
+    )
+
     if no_result_reason:
         return await _no_result(no_result_reason)
 
@@ -744,13 +752,14 @@ async def generate_answer(
         )
         logger.debug("PROMPT: %d caratteri (~%d token stimati)", len(user_prompt), len(user_prompt) // 4)
         tracing.fact(context_resources=len(top_metadatas), context_chars=len(context or ""),
+                     prompt_chars=len(user_prompt), retrieval_ms=round((time.perf_counter() - retrieval_started) * 1000, 1),
                      prompt_type="NBS" if nbs else "GENERIC")
         tracing.safe_update(ctx_obs, output={
             "resources": [{"dataset_id": (m or {}).get("dataset_id"), "title": (m or {}).get("title")}
                           for m in top_metadatas],
             "context_chars": len(context or ""), "prompt_chars": len(user_prompt),
             "prompt_type": "NBS" if nbs else "GENERIC", "relaxed_notice": relaxed,
-        })
+        }, metadata=prompt_metadata("chat_nbs_system" if nbs else "chat_system"))
 
     if model:
         answer = await ollama_client.generate_completion(user_prompt, model=model, temperature=0.0, system=system_prompt,

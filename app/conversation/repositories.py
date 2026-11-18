@@ -7,13 +7,17 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 import logging
 
+from app.observability import otel
+
 load_dotenv()
 logger = logging.getLogger(__name__)
 
 CONVERSATION_COLLECTION = "conversations"
 MESSAGE_TTL_DAYS = int(os.getenv("MESSAGE_TTL_DAYS", 7))  # GDPR: auto-delete after 7 days
+_MONGO_DB = os.getenv("MONGODB_DB", "rag_platform")
 
 
+@otel.traced_db("create_indexes", "mongodb", namespace=_MONGO_DB, collection=CONVERSATION_COLLECTION)
 async def initialize_conversation_indexes():
     """
     Create TTL index for automatic conversation expiration (GDPR compliance).
@@ -37,6 +41,7 @@ async def initialize_conversation_indexes():
     logger.info("Conversation indexes initialized (TTL + query indexes)")
 
 
+@otel.traced_db("insert_one", "mongodb", namespace=_MONGO_DB, collection=CONVERSATION_COLLECTION)
 async def save_message(
     conversation_id: str,
     tenant_id: str,
@@ -83,6 +88,7 @@ async def save_message(
     return doc
 
 
+@otel.traced_db("find_one", "mongodb", namespace=_MONGO_DB, collection=CONVERSATION_COLLECTION)
 async def get_last_sources(                       # [NEW]
     conversation_id: str,
     tenant_id: str,
@@ -112,6 +118,7 @@ async def get_last_sources(                       # [NEW]
     return doc.get("sources", []) if doc else []
 
 
+@otel.traced_db("find", "mongodb", namespace=_MONGO_DB, collection=CONVERSATION_COLLECTION)
 async def get_conversation_history(
     conversation_id: str,
     user_id: str,
@@ -143,6 +150,7 @@ async def get_conversation_history(
     return messages
 
 
+@otel.traced_db("find", "mongodb", namespace=_MONGO_DB, collection=CONVERSATION_COLLECTION)
 async def get_recent_messages_for_context(
     conversation_id: str,
     user_id: str,
@@ -177,6 +185,7 @@ async def get_recent_messages_for_context(
     return messages
 
 
+@otel.traced_db("delete_many", "mongodb", namespace=_MONGO_DB, collection=CONVERSATION_COLLECTION)
 async def delete_user_conversations(user_id: str, tenant_id: str) -> int:
     """
     Delete all conversations for a user (for right-to-be-forgotten compliance).
@@ -200,6 +209,7 @@ async def delete_user_conversations(user_id: str, tenant_id: str) -> int:
     return result.deleted_count
 
 
+@otel.traced_db("delete_many", "mongodb", namespace=_MONGO_DB, collection=CONVERSATION_COLLECTION)
 async def delete_conversation(
     conversation_id: str,
     user_id: str,

@@ -1,0 +1,62 @@
+# =============================================================================
+# Listino prezzi per il calcolo dei costi di osservabilita' (Langfuse/OTel).
+#
+# Questo file e' pensato per essere modificato a mano da un operatore.
+# Non serve riavviare l'applicazione: il file viene riletto automaticamente
+# quando cambia (viene controllata la data di modifica a ogni chiamata LLM).
+#
+# Unita': valuta indicata in "currency" per 1.000 (mille) token.
+# Esempio: input_per_1k: 0.00027 significa 0.00027 USD ogni 1.000 token.
+#
+# Regole di risoluzione del prezzo:
+#   1. corrispondenza esatta del nome modello in "models"
+#   2. corrispondenza tramite "aliases"
+#   3. blocco "default"
+# Se il file non esiste, l'app usa le vecchie variabili
+# LLM_INPUT_COST_PER_1K / LLM_OUTPUT_COST_PER_1K / EMBEDDING_COST_PER_1K.
+#
+# Le metriche OTel "idra.llm.cost" assumono USD: se cambi valuta, aggiorna
+# anche le dashboard/collector di conseguenza.
+# =============================================================================
+currency: USD
+
+# Prezzi applicati ai modelli non elencati o senza il rate specifico.
+# Lasciare 0 per modelli locali gratuiti (Ollama).
+default:
+  input_per_1k: 0.0
+  output_per_1k: 0.0
+  embedding_per_1k: 0.0
+
+# Nomi alternativi restituiti dai provider (es. senza prefisso o senza tag).
+# La chiave deve esistere in "models".
+aliases:
+  deepseek/deepseek-v4.1-flash:
+    - deepseek-v4.1-flash
+    - deepseek/deepseek-v4.1-flash:latest
+  qwen/qwen3-embedding-8b:
+    - qwen3-embedding-8b
+    - qwen/qwen3-embedding-8b:latest
+
+models:
+  # Modello LLM remoto configurato in .env.test (TensorX API).
+  # Inserire qui i prezzi reali del provider.
+  deepseek/deepseek-v4.1-flash:
+    input_per_1k: 0.0005
+    output_per_1k: 0.0015
+
+  # Modello di embedding remoto configurato in .env.test.
+  qwen/qwen3-embedding-8b:
+    embedding_per_1k: 0.00002
+    input_per_1k: 0.00002
+
+  # Modelli locali Ollama: costo 0 salvo diverso costo energia/hardware.
+  qwen2.5:7b:
+    input_per_1k: 0.0
+    output_per_1k: 0.0
+
+  mxbai-embed-large:
+    embedding_per_1k: 0.0
+
+  mistral-nemo:
+    input_per_1k: 0.0
+    output_per_1k: 0.0

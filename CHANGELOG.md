@@ -2,6 +2,57 @@
 
 Tutti i cambiamenti notevoli del progetto Idra AI Chatbot.
 
+## 2026-11-18
+
+### OpenTelemetry end-to-end (traces, metrics, logs, propagazione)
+
+- Nuovo `app/observability/otel.py`: bootstrap unico con Resource condivisa
+  (`service.name/version/namespace`, `deployment.environment.name`,
+  `service.instance.id`), `TracerProvider` con sampler, exporter OTLP/HTTP per
+  trace/metriche/log, export Prometheus opzionale, auto-instrumentation opzionale
+  httpx/PyMongo/PyMySQL e shutdown/flush centralizzati.
+- Langfuse e collector OTLP generico condividono lo stesso `TracerProvider`; se
+  Langfuse è disattivato ma `OTEL_EXPORTER_OTLP_ENDPOINT` è configurato, la
+  pipeline continua a produrre span tramite un adapter interno.
+- Propagazione W3C `traceparent` in ingresso/uscita, header `x-trace-id` nelle
+  risposte HTTP e `trace_id`/`span_id` in ogni log structlog.
+- Semantic conventions: `gen_ai.*` (chat/embeddings, modelli, token, finish
+  reason, retry), `http.*`, `db.*`, `openinference.span.kind`; eventi `retry`/
+  `error` e status `ERROR` sugli span.
+- Metriche OTel: latenza chat/HTTP/LLM/retrieval/DB/ingestion, token per tipo,
+  costo LLM, entità ingestion, errori per componente; `/metrics` JSON invariato.
+- Nuovi score di qualità: `retrieval_candidates_total`,
+  `retrieval_precision_proxy`, `retrieval_score_gap`, `retrieval_latency_ms`,
+  `answer_chars`, `context_chars`, `prompt_chars`, `answer_has_sources`,
+  `language_method`, `prompt_type`.
+- Nuove variabili `OTEL_*` in `.env.example` e README (sezioni 8.6-8.9), con
+  identità `idra-ai-chatbot-observation`/`idra-collector`, collector
+  `http://host.docker.internal:4318` (`localhost:4318` fuori Docker), protocollo
+  `http/protobuf`, log `DEBUG` e tuning di batch/limiti SDK.
+- Nuovo `model_pricing.yaml` con hot reload (`app/observability/pricing.py`):
+  prezzi per modello in USD/1K token modificabili dall'operatore senza riavvio;
+  le variabili `LLM_*_COST_PER_1K` restano solo come fallback.
+- Nuovo `observability/slo.yaml`: SLO del deployment piccolo, budget di 10M
+  token/mese (warning 80%, critico 100%) ed espressioni PromQL di esempio.
+- Corretta l'auto-instrumentazione PyMongo (`PymongoInstrumentor`) e aggiunte
+  `opentelemetry-exporter-prometheus`/strumentazioni al requirements locale.
+
+### Prompt esternalizzati + metriche complete di ingestion (Langfuse)
+
+- Prompt di sistema e dei task LLM spostati in `app/prompts/*.md`, caricati da
+  `app/prompts/__init__.py` (`load_prompt`, `prompt_metadata`); `app/config/config.py`
+  mantiene le costanti pubbliche per compatibilità.
+- Ogni span rilevante riporta `prompt_name` e `prompt_version` nei metadata.
+- `tracing.py`: nuovo collector di metriche annidabile (`collect_metrics`) con tempi per
+  fase, token input/output/total, chiamate e costo per modello; `observe_step` accumula
+  automaticamente la durata di ogni fase.
+- Embedding: `usage_details` (input/total) e `cost_details` opzionali su ogni observation;
+  le generazioni LLM registrano usage e costo.
+- Trace `ingestion.run`: metadata `metrics` con tempi di ogni fase, token e costo totale,
+  più score `tokens_input`, `tokens_output`, `tokens_total`, `cost_total` (e per entità).
+- Nuove variabili `LLM_INPUT_COST_PER_1K`, `LLM_OUTPUT_COST_PER_1K`, `EMBEDDING_COST_PER_1K`
+  per il calcolo del costo (default 0 per modelli locali).
+
 ## 2026-11-12
 
 ### Ingestion da MySQL Idra-Backend + NBS da Orion

@@ -1,5 +1,6 @@
 import asyncio
 import os
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException, Request, Response, status
@@ -17,11 +18,14 @@ from pymongo.errors import PyMongoError
 from starlette.middleware.cors import CORSMiddleware
 from app.mongodb.client import get_database
 from app.chat.dto.models import ChatRequest, ChatResponse, SourceReference
+from app.observability import otel
 
 load_dotenv()
 
 structlog.configure(
     processors=[
+        structlog.contextvars.merge_contextvars,
+        otel.trace_context_processor,
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso"),
@@ -31,7 +35,7 @@ structlog.configure(
     context_class=dict,
     logger_factory=structlog.stdlib.LoggerFactory(),
 )
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper())
 logger = structlog.get_logger(__name__)
 
 class Settings(BaseSettings):
@@ -55,6 +59,13 @@ from .observability import tracing
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # Bootstrap traces/metrics/logs before any request is served.
+    otel.setup()
+    otel.instrument_libraries()
+    logger.info("observability_ready", otel_enabled=otel.enabled(),
+                traces_enabled=otel.tracing_enabled(),
+                langfuse_enabled=tracing.enabled())
+
     # Initialize MongoDB indexes during application startup.
     logger.info("Initializing conversation history indexes...")
     await conversation_repositories.initialize_conversation_indexes()
@@ -67,8 +78,6 @@ async def lifespan(_: FastAPI):
         logger.info("chat_feedback TTL index initialized")
     except Exception as exc:
         logger.warning("chat_feedback index init failed", error=str(exc))
-
-    logger.info("tracing", langfuse_enabled=tracing.enabled())
 
     yield
 
@@ -92,6 +101,59 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],      # necessario per far passare Authorization e X-Tenant-Id
 )
+
+
+@app.middleware("http")
+async def otel_http_middleware(request: Request, call_next):
+    """OTel SERVER span + W3C trace context propagation for every request."""
+    otel.setup()
+    if not otel.tracing_enabled():
+        return await call_next(request)
+
+    excluded = {p.strip() for p in os.getenv("OTEL_HTTP_EXCLUDE_PATHS", "").split(",") if p.strip()}
+    if request.url.path in excluded:
+        return await call_next(request)
+
+    from opentelemetry import trace as otel_trace
+    from opentelemetry.trace import SpanKind
+
+    parent_context = otel.extract_context(request.headers)
+    attributes = {
+        "http.request.method": request.method,
+        "url.path": request.url.path,
+        "url.scheme": request.url.scheme,
+        "server.address": request.url.hostname,
+        "server.port": request.url.port,
+        "user_agent.original": request.headers.get("user-agent"),
+        "client.address": request.client.host if request.client else None,
+    }
+    tracer = otel_trace.get_tracer("idra.http", otel.service_version())
+    with tracer.start_as_current_span(
+        f"HTTP {request.method}", context=parent_context, kind=SpanKind.SERVER,
+        attributes={k: v for k, v in attributes.items() if v is not None},
+    ) as span:
+        status_code = 500
+        started = time.perf_counter()
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+            route = request.scope.get("route")
+            otel.set_attributes(span, {"http.route": getattr(route, "path", request.url.path)})
+            otel.set_http_status(span, status_code)
+            for key, value in otel.trace_headers().items():
+                response.headers[key] = value
+            return response
+        except Exception as exc:
+            otel.record_exception(span, exc)
+            raise
+        finally:
+            route = request.scope.get("route")
+            otel.record_http_request(
+                request.method, getattr(route, "path", request.url.path),
+                status_code, time.perf_counter() - started,
+            )
+
+
 app.include_router(chat_router)
 
 _FRONTEND_PATH = Path(__file__).parent / "static" / "index.html"

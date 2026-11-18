@@ -2,6 +2,7 @@ import os
 from typing import Any
 from dotenv import load_dotenv
 from app.chroma import client as chroma_client
+from app.observability import otel
 
 load_dotenv()
 
@@ -42,12 +43,22 @@ def vector_search(
     clauses = [{"tenant_id": tenant_id}] + [{k: v} for k, v in where.items()]
     metadata_filter = clauses[0] if len(clauses) == 1 else {"$and": clauses}
 
-    return collection.query(
-        query_embeddings=[query_embedding],
-        n_results=n_results,
-        where=metadata_filter,
-        include=["documents", "metadatas", "distances"],
-    )
+    with otel.db_operation("query", "chroma", namespace=tenant_id,
+                           collection=f"rag_tenant_{tenant_id}") as span:
+        result = collection.query(
+            query_embeddings=[query_embedding],
+            n_results=n_results,
+            where=metadata_filter,
+            include=["documents", "metadatas", "distances"],
+        )
+        if span is not None:
+            documents = (result.get("documents") or [[]])[0]
+            otel.set_attributes(span, {
+                "idra.chroma.n_results": n_results,
+                "idra.chroma.returned": len(documents),
+                "idra.chroma.has_where": bool(where),
+            })
+        return result
 
 
 def search_for_message(tenant_id: str, message: str, query_embedding: list[float],

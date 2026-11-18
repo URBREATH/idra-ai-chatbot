@@ -380,19 +380,43 @@ di modello embedding (dimensioni diverse) o di pipeline di chunking.
 `invented_links_removed`, `answer_no_result`, `answer_cited_resource`, `nbs_mode`,
 `exit_path` (categorico: answered/no_result), `language`, `rerank_method`.
 
-**Ollama**: ogni `generate_embedding` / `generate_completion` produce una observation
-`embedding`/`generation` con model, model_parameters, usage (prompt/output/total tokens,
-durations) e timing (eval_ms, tokens/second).
+**Ollama / API remoti**: ogni `generate_embedding` / `generate_completion` produce una
+observation `embedding`/`generation` con model, model_parameters, usage
+(prompt/output/total tokens, durations) e timing (eval_ms, tokens/second). L'`input`
+della generation contiene i `messages` esatti (`system` + `user`) inviati al provider;
+l'`input` dell'embedding contiene il testo esatto. I metadata riportano `provider`
+(`ollama` o `openai`), `endpoint` e `request` (body HTTP completo, troncato a
+`LANGFUSE_MAX_IO_CHARS`), così il prompt è verificabile sia in locale sia in remoto.
+L'enrichment usa la generation dedicata `llm.enrichment`.
 
 **Ingestion** — trace `ingestion.run` per run (sessione `ingestion-<run_id>`) con span
-`read_index`, `full_reindex_delete`, `load_sources`, `plan`, `chroma_upsert`,
-`remove_stale`, più **una trace per entità** (`ingestion.entity`, disattivabile con
-`LANGFUSE_TRACE_INGESTION_ENTITIES=false`) con span `ingestion.semantic_enrichment` e
-score `enrichment_terms`/`enrichment_status`/`chunks`. Score a livello di run:
-`entities_indexed`, `entities_unchanged`, `entities_errors`, `chunks_upserted`,
-`entities_deleted`, più p50/p95 secondi per entità nei metadata.
+`read_index`, `full_reindex_delete`, `load_sources`, `plan`, `build_payload`, `chunk`,
+`embeddings`, `semantic_enrichment`, `chroma_upsert`, `remove_stale`, più **una trace per
+entità** (`ingestion.entity`, disattivabile con `LANGFUSE_TRACE_INGESTION_ENTITIES=false`)
+con span `ingestion.semantic_enrichment` e score `enrichment_terms`/`enrichment_status`/
+`chunks`/`tokens_total`/`cost_total`. Score a livello di run: `entities_indexed`,
+`entities_unchanged`, `entities_errors`, `chunks_upserted`, `entities_deleted`,
+`tokens_input`, `tokens_output`, `tokens_total`, `cost_total`, più p50/p95 secondi per
+entità nei metadata.
 
-### 8.2 Feedback utente
+I metadata della trace `ingestion.run` contengono il riepilogo `metrics` con:
+`timings_ms` (somma dei tempi di ogni fase), `usage` (token input/output/total),
+`cost` (se configurato), `calls` per tipo e `models` con token/costo per modello.
+Gli embedding riportano `usage_details` (input/total) e, se configurato, `cost_details`.
+Se il modello locale non restituisce token, il conteggio resta 0 ma la fase è comunque
+temporizzata.
+
+### 8.2 Prompt versionati
+
+I prompt di sistema e i prompt dei task LLM (lingua, rewrite, enrichment) vivono in
+`app/prompts/*.md`; il codice li carica tramite `app.prompts.load_prompt`. Ogni span
+rilevante riporta `prompt_name` e `prompt_version` (hash breve del file) nei metadata,
+così in Langfuse è immediato capire quale prompt ha prodotto una risposta. Per
+l'enrichment lo span `ingestion.semantic_enrichment` espone in `input` sia il testo
+sorgente sia il prompt renderizzato (`{text}` già sostituito), identico a quello
+inviato nella generation `llm.enrichment`.
+
+### 8.3 Feedback utente
 
 - `POST /chat` restituisce `traceId` nel payload (`ChatResponse.traceId`).
 - La UI mostra pulsanti 👍/👎 sotto ogni risposta dell'assistente.
@@ -406,7 +430,7 @@ curl -X POST http://localhost:3000/chat/feedback -H "Content-Type: application/j
   -d '{"conversationId":"...","rating":"positive","traceId":"<traceId dalla risposta chat>","comment":"utile"}'
 ```
 
-### 8.3 Dashboard e query
+### 8.4 Dashboard e query
 
 - UI: `http://localhost:3100` (login: credenziali `LANGFUSE_INIT_USER_*`).
 - Filtri utili: `session.id = conv-<id>`, tag `chat`, tag `ingestion`, tag
@@ -417,7 +441,7 @@ curl -X POST http://localhost:3000/chat/feedback -H "Content-Type: application/j
   le trace sono esportate via OTLP (`POST /api/public/otel/v1/traces`) e consultate da UI.
   Gli score restano inviabili via `POST /api/public/scores` (l'SDK li gestisce).
 
-### 8.4 Configurazione privacy/volume
+### 8.5 Configurazione privacy/volume
 
 | Variabile | Effetto |
 |-----------|---------|
@@ -425,6 +449,169 @@ curl -X POST http://localhost:3000/chat/feedback -H "Content-Type: application/j
 | `LANGFUSE_MAX_IO_CHARS` | troncamento input/output salvati (default 20000) |
 | `LANGFUSE_SAMPLE_RATE` | campionamento trace (es. `0.25` = 25% delle richieste) |
 | `LANGFUSE_TRACE_INGESTION_ENTITIES=false` | solo trace run-level durante l'ingestion (riduce volume) |
+| `MODEL_PRICING_FILE` | percorso alternativo del listino (default `model_pricing.yaml` nella root) |
+| `LLM_INPUT_COST_PER_1K` / `LLM_OUTPUT_COST_PER_1K` / `EMBEDDING_COST_PER_1K` | fallback legacy usato solo se `model_pricing.yaml` non esiste |
+| `OTEL_CAPTURE_IO=false` | non salva input/output sugli span OTel generici |
+| `OTEL_REDACT_PII=true` | maschera le email nei log strutturati |
+
+**Listino prezzi modificabile (`model_pricing.yaml`).** Il file nella root del
+progetto contiene `currency`, `default`, `aliases` e `models`; ogni modello ha
+`input_per_1k`, `output_per_1k` e/o `embedding_per_1k`. Il file viene riletto
+automaticamente quando cambia (nessun riavvio): un operatore può aggiornare i
+prezzi mentre l'app è in esecuzione. Per verificare il contenuto caricato:
+
+```bash
+python -m app.observability.pricing
+```
+
+Se il file manca o è invalido, l'app usa le variabili `LLM_*_COST_PER_1K` e
+continua a funzionare. Le metriche `idra.llm.cost` e i `cost_details` Langfuse
+assumono USD.
+
+### 8.6 OpenTelemetry (traces, metrics, logs)
+
+Il bootstrap è in `app/observability/otel.py`. Langfuse e il collector OTLP
+generico condividono lo stesso `TracerProvider` e le stesse **Resource
+attributes**: in questa installazione `service.name=idra-ai-chatbot-observation`,
+`service.namespace=idra-collector`, `service.version=1.0.0`,
+`deployment.environment.name=development`, `service.instance.id` generato a ogni
+processo, `host.name` dal container e `deployment.platform.name=docker` da
+`OTEL_RESOURCE_ATTRIBUTES`. Langfuse riceve anche `langfuse.environment` e
+`langfuse.release`, le sole Resource attributes che usa per filtrare le trace.
+
+Configurazione applicata:
+
+- Langfuse **self-hosted** raggiunto direttamente da `LANGFUSE_BASE_URL`
+  (`http://langfuse-web:3000` nella rete Docker `langfuse_default`).
+- Collector OTLP/HTTP generico su `OTEL_EXPORTER_OTLP_ENDPOINT`; dal container
+  app vale `http://host.docker.internal:4318` (il `localhost` del container non
+  è l'host), per un processo locale `http://localhost:4318`.
+- `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`, traces/metrics/logs tutti via OTLP.
+- Sampling head-based al 100% (`OTEL_SAMPLE_RATE=1.0`): adatto a un deployment
+  piccolo con budget di 10M token/mese; per volumi maggiori usare tail sampling
+  nel collector o abbassare il ratio.
+- Log al massimo dettaglio (`LOG_LEVEL=DEBUG`) con correlazione
+  `trace_id`/`span_id`, batch OTel configurati esplicitamente (BSP/BLRP/metriche)
+  e limiti SDK per non troncare prompt/documenti ma evitare payload enormi.
+
+Se Langfuse non è configurato ma `OTEL_EXPORTER_OTLP_ENDPOINT` sì, la pipeline
+continua a produrre span generici (adapter interno con le stesse span/fasi):
+nessun codice applicativo cambia.
+
+- **Traces** (`OTEL_TRACES_EXPORTER=otlp|none`): span HTTP server, span applicativi
+  (`chat`, `retrieval.*`, `llm.*`, `ingestion.*`, `db.*`) con propagazione W3C
+  `traceparent` in ingresso e in uscita (header `x-trace-id` nella risposta).
+- **Metrics** (`OTEL_METRICS_EXPORTER=otlp|prometheus|none`): `idra.chat.requests`,
+  `idra.chat.duration`, `http.server.request.duration`,
+  `gen_ai.client.operation.duration`, `gen_ai.client.token.usage`, `idra.llm.cost`,
+  `idra.retrieval.duration`, `idra.retrieval.candidates`, `idra.db.operation.duration`,
+  `idra.ingestion.duration`, `idra.ingestion.entities`, `idra.errors`.
+  Con `prometheus` viene esposto `http://0.0.0.0:9464/metrics`.
+- **Logs** (`OTEL_LOGS_EXPORTER=otlp|none`): structlog/JSON già configurato; un
+  `LoggingHandler` OTel invia gli stessi record al collector. Ogni riga include
+  `trace_id` e `span_id` per correlare log e trace.
+- **Auto-instrumentation** opzionale (`OTEL_INSTRUMENT_HTTPX/PYMONGO/PYMYSQL`):
+  aggiunge span client HTTP e DB senza modificare il codice. Se i pacchetti non
+  sono installati viene loggato un debug e l'app continua.
+- **Health**: `/health` riporta anche `langfuse`; `/metrics` resta il JSON
+  applicativo, separato dal endpoint Prometheus.
+
+Esempio collector minimo (OTLP/HTTP):
+
+```yaml
+# docker-compose.yml (estratto)
+otel-collector:
+  image: otel/opentelemetry-collector-contrib:latest
+  command: ["--config=/etc/otelcol/config.yaml"]
+  volumes: ["./otel-collector.yaml:/etc/otelcol/config.yaml"]
+  ports: ["4318:4318"]
+```
+
+```yaml
+# otel-collector.yaml (estratto)
+receivers:
+  otlp:
+    protocols: { http: { endpoint: 0.0.0.0:4318 } }
+exporters:
+  debug: {}
+  prometheus: { endpoint: 0.0.0.0:8888 }
+service:
+  pipelines:
+    traces:  { receivers: [otlp], exporters: [debug] }
+    metrics: { receivers: [otlp], exporters: [prometheus] }
+    logs:    { receivers: [otlp], exporters: [debug] }
+```
+
+### 8.7 Semantic conventions, errori e qualità
+
+- **GenAI**: `gen_ai.system`/`gen_ai.provider.name`, `gen_ai.operation.name`
+  (`chat`/`embeddings`), `gen_ai.request.model`, `gen_ai.response.model`,
+  `gen_ai.usage.input_tokens`/`output_tokens`, `gen_ai.response.finish_reasons`,
+  `http.request.resend_count` sui retry.
+- **HTTP/DB**: `http.request.method`, `http.route`, `http.response.status_code`,
+  `server.address`/`server.port`, `db.system.name`, `db.operation.name`,
+  `db.namespace`, `db.collection.name`.
+- **OpenInference**: `openinference.span.kind` (LLM/EMBEDDING/RETRIEVER/RERANKER/
+  TOOL/AGENT/GUARDRAIL/CHAIN), compatibile con Phoenix e altri backend.
+- **Errori/retry**: status `ERROR`, evento `exception`, eventi `retry` con
+  `attempt`/`reason`; metriche `idra.errors{component,error.type}`.
+- **Qualità (score Langfuse + metriche OTel)**: oltre agli score esistenti,
+  `retrieval_candidates_total`, `retrieval_precision_proxy`,
+  `retrieval_score_gap`, `retrieval_latency_ms`, `answer_chars`, `context_chars`,
+  `prompt_chars`, `answer_has_sources`, `language_method`, `prompt_type`.
+  Recall@k/MRR/nDCG e groundedness richiedono un dataset di ground-truth o un
+  LLM-as-judge: non sono calcolabili senza dati etichettati.
+- **Governance**: `OTEL_SAMPLE_RATE` per il sampling head-based (tail sampling nel
+  collector), `LANGFUSE_CAPTURE_IO`/`OTEL_CAPTURE_IO` per non inviare prompt,
+  `OTEL_REDACT_PII` per le email nei log; audit/retention restano nel backend
+  (Langfuse/ClickHouse o collector) secondo la policy aziendale.
+
+### 8.8 Configurazione applicata e dati residui
+
+La configurazione scelta è già applicata in `.env.example` (locale) e
+`.env.test` (Docker). Non servono altre modifiche al codice per il funzionamento
+standard:
+
+1. **Backend**: Langfuse self-hosted (nessun cloud, nessun header di auth OTLP
+   verso il collector).
+2. **Collector**: `http://host.docker.internal:4318` dal container,
+   `http://localhost:4318` da un processo locale, protocollo `http/protobuf`.
+3. **Identità**: `idra-ai-chatbot-observation` / `idra-collector` / `1.0.0` /
+   `development`; release Langfuse `1.0.0`.
+4. **Privacy**: dati di libero accesso, cattura completa di input/output
+   (`OTEL_CAPTURE_IO=true`, `LANGFUSE_CAPTURE_IO=true`, `OTEL_REDACT_PII=false`).
+5. **Costi**: listino in `model_pricing.yaml`, modificabile dall'operatore a
+   caldo; valori iniziali a 0 per i modelli locali e da compilare per i modelli
+   remoti.
+6. **Volume**: budget dichiarato 10.000.000 token/mese per tutti i modelli LLM
+   remoti, con avviso all'80% e critico al 100% (vedi 8.9).
+7. **Log**: livello `DEBUG` e limiti SDK configurati per il massimo dettaglio.
+
+Restano da fornire solo se cambia l'infrastruttura o la policy:
+
+- endpoint/credenziali reali se il collector non è più su `localhost:4318`;
+- retention e residenza dati del backend Langfuse/collector;
+- eventuale pseudonimizzazione di `user_id` o mascheramento di campi;
+- canali di notifica per gli alert (Slack/email/PagerDuty) e relativo routing;
+- prezzi reali per i modelli remoti nel file `model_pricing.yaml`.
+
+### 8.9 SLO, budget e alert
+
+Le soglie per il deployment piccolo sono in `observability/slo.yaml`:
+
+| Area | Obiettivo |
+|------|-----------|
+| Chat | p95 ≤ 15 s, p99 ≤ 30 s, error rate ≤ 2% |
+| LLM | error rate ≤ 1% |
+| Retrieval | p95 ≤ 1,5 s, precision proxy ≥ 0,5 |
+| Ingestion | success rate ≥ 98%, p95 ≤ 15 min |
+| Osservabilità | export OTLP riuscito ≥ 99%, ≤ 100 span persi/ora |
+| Budget | 10M token/mese (warning 80%, critico 100%) |
+
+Il file contiene anche le espressioni PromQL di esempio per latenza chat,
+error rate, latenza retrieval, ingestion lenta, budget token e fallimenti di
+export del collector. Le soglie non bloccano l'app: il budget è monitorato, non
+applicato con un hard stop.
 
 ---
 
@@ -641,6 +828,31 @@ docker exec -it idra_ai_chatbot bash
 | LANGFUSE_CAPTURE_IO | Salva prompt/risposte/documenti | true |
 | LANGFUSE_MAX_IO_CHARS | Troncamento input/output salvati | 20000 |
 | LANGFUSE_TRACE_INGESTION_ENTITIES | Trace per singola entità in ingestion | true |
+| MODEL_PRICING_FILE | Percorso del listino modificabile (default `model_pricing.yaml`) | `model_pricing.yaml` |
+| LLM_INPUT_COST_PER_1K / LLM_OUTPUT_COST_PER_1K | Fallback legacy costo LLM (usato solo senza file) | 0 |
+| EMBEDDING_COST_PER_1K | Fallback legacy costo embedding | 0 |
+| OTEL_ENABLED | Master switch OpenTelemetry | true |
+| OTEL_SDK_DISABLED | Disattiva l'SDK OTel a monte (debug) | false |
+| OTEL_SERVICE_NAME / OTEL_SERVICE_VERSION / OTEL_SERVICE_NAMESPACE | Identità del servizio | idra-ai-chatbot-observation / 1.0.0 / idra-collector |
+| OTEL_DEPLOYMENT_ENVIRONMENT | Environment sulle Resource | development |
+| OTEL_SERVICE_INSTANCE_ID | ID istanza (vuoto = UUID per processo) | - |
+| OTEL_RESOURCE_ATTRIBUTES | Attributi Resource extra | deployment.platform.name=docker |
+| OTEL_EXPORTER_OTLP_ENDPOINT | Collector OTLP/HTTP (base) | http://localhost:4318 (Docker: host.docker.internal) |
+| OTEL_EXPORTER_OTLP_PROTOCOL | Protocollo OTLP | http/protobuf |
+| OTEL_EXPORTER_OTLP_TRACES_ENDPOINT / METRICS_ENDPOINT / LOGS_ENDPOINT | Override per signal | - |
+| OTEL_EXPORTER_OTLP_HEADERS | Header auth collector (`k=v,k2=v2`) | - |
+| OTEL_EXPORTER_TIMEOUT | Timeout export OTLP (s) | 10 |
+| OTEL_TRACES_EXPORTER / OTEL_METRICS_EXPORTER / OTEL_LOGS_EXPORTER | `otlp`/`prometheus`/`none` | otlp |
+| OTEL_SAMPLE_RATE | Campionamento head-based (0-1) | 1.0 |
+| OTEL_PROMETHEUS_PORT | Porta scrape Prometheus | 9464 |
+| OTEL_INSTRUMENT_HTTPX / PYMONGO / PYMYSQL | Auto-instrumentation | true |
+| OTEL_CAPTURE_IO / OTEL_REDACT_PII | Input/output sugli span OTel / maschera email nei log | true / false |
+| OTEL_HTTP_EXCLUDE_PATHS | Path esclusi dagli span HTTP | - |
+| OTEL_BSP_* / OTEL_BLRP_* | Coda, batch, delay e timeout di span/log | 2048 / 512 / 5000 ms / 30000 ms |
+| OTEL_METRIC_EXPORT_INTERVAL / TIMEOUT | Intervallo e timeout export metriche | 60000 / 30000 ms |
+| OTEL_ATTRIBUTE_* / OTEL_SPAN_* / OTEL_LOGRECORD_* | Limiti SDK per attributi, eventi e link | 512 / 65535 / 256 / 128 |
+| OTEL_MONTHLY_TOKEN_BUDGET | Budget token/mese per dashboard e alert | 10000000 |
+| LOG_LEVEL | Livello log applicativo | DEBUG |
 
 ---
 
@@ -667,12 +879,19 @@ docker exec -it idra_ai_chatbot bash
 │   ├── controllers/           # chat_controller (root trace + score)
 │   └── dto/models.py          # ChatResponse (traceId), FeedbackRequest
 ├── ingestion/
-│   ├── service.py             # Pipeline ingestion (trace run + per-entity)
+│   ├── service.py             # Pipeline ingestion (trace run + per-entity, metriche fasi/token)
 │   ├── semantic_enricher.py   # Enrichment LLM (instrumentato)
 │   └── sources.py             # Sorgenti: mysql / mongo_nbs / mongo
+├── prompts/
+│   ├── __init__.py            # Loader + prompt metadata (nome/versione)
+│   └── *.md                   # Prompt di sistema e dei task LLM
 ├── observability/
-│   └── tracing.py             # Langfuse/OTel helpers (no-op senza chiavi)
+│   ├── tracing.py             # Langfuse helper + metriche/token/costi (no-op senza chiavi)
+│   ├── pricing.py             # Listino modelli con hot reload + validazione CLI
+│   └── otel.py                # OTel bootstrap: Resource, OTLP/Prometheus, log, propagazione
 └── static/index.html          # UI chat + pulsanti feedback
+/model_pricing.yaml            # Listino prezzi modificabile dall'operatore
+/observability/slo.yaml        # SLO, budget 10M token e regole di alert
 /observability/langfuse/
 ├── docker-compose.yml         # Stack Langfuse v4 (postgres, clickhouse, minio, redis)
 └── .env.example               # Template chiavi/config

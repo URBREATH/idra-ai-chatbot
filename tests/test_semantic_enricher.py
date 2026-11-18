@@ -42,7 +42,7 @@ class TestSemanticEnricher:
 
         captured = {}
 
-        async def capture_completion(prompt, model, temperature):
+        async def capture_completion(prompt, model, temperature, **_):
             captured["model"] = model
             captured["temperature"] = temperature
             return '["term1", "term2"]'
@@ -59,7 +59,7 @@ class TestSemanticEnricher:
 
         captured_prompt = {}
 
-        async def capture_completion(prompt, model, temperature):
+        async def capture_completion(prompt, model, temperature, **_):
             captured_prompt["prompt"] = prompt
             return '["term1"]'
 

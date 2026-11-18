@@ -21,6 +21,7 @@ import logging
 from app.ollama import client as ollama_client   # adapt to your real path
 from app.observability import tracing
 from app.config.config import _REFERENCE_MARKERS, _REACTION_MARKERS, _REWRITE_PROMPT
+from app.prompts import prompt_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,8 @@ async def rewrite_query(message: str, conversation_context: str,
         return message
     prompt = _REWRITE_PROMPT.format(context=conversation_context, message=message)
     with tracing.observe_step("chat.query_rewrite", as_type="chain",
-                              input=tracing.io({"message": message, "history_chars": len(conversation_context)})) as obs:
+                              input=tracing.io({"message": message, "history_chars": len(conversation_context)}),
+                              metadata=prompt_metadata("chat_query_rewrite")) as obs:
         try:
             if model:
                 raw = await ollama_client.generate_completion(prompt, model=model, temperature=0.0,

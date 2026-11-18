@@ -4,7 +4,7 @@ from typing import Any
 from dotenv import load_dotenv
 
 from app.common.utils.reranker_encoder import get_cross_encoder, OLLAMA_RERANKER_MODEL
-from app.observability import tracing
+from app.observability import otel, tracing
 
 load_dotenv()
 DEFAULT_TOP_K = int(os.getenv("DEFAULT_TOP_K", 10))
@@ -54,7 +54,7 @@ def rerank(
     if not documents:
         return []
 
-    with tracing.observe_step("retrieval.rerank", as_type="span",
+    with tracing.observe_step("retrieval.rerank", as_type="reranker",
                               input=tracing.io({"query": query, "candidates": len(documents), "top_k": top_k})) as obs:
         scores = None
         try:
@@ -76,6 +76,12 @@ def rerank(
                     "distance": round(float(distances[i]), 4) if i < len(distances) else None,
                     "score": round(scores[i], 4) if scores else None}
                    for r, i in enumerate(indices)]
+        otel.annotate_current_span(**{
+            "rerank.method": method,
+            "rerank.candidates": len(documents),
+            "rerank.top_k": top_k,
+            "gen_ai.request.model": OLLAMA_RERANKER_MODEL if scores else None,
+        })
         tracing.safe_update(obs, output=ranking,
                             metadata={"method": method, "model": OLLAMA_RERANKER_MODEL if scores else None})
         tracing.fact(rerank_method=method)

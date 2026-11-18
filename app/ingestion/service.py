@@ -21,7 +21,7 @@ from .sources import (
     get_all_dataset_ids
 )
 from ..ollama.client import generate_embedding
-from ..observability import tracing
+from ..observability import otel, tracing
 from ..chroma.client import get_tenant_collection, reset_tenant_collection, delete_documents_from_collection, get_indexed_hashes
 
 load_dotenv()
@@ -174,7 +174,10 @@ async def _process_dataset(ds: Dict[str, Any], tenant_id: str,
     with tracing.observe_step("ingestion.build_payload", as_type="span") as pobs:
         payload = await build_payload(ds)
         tracing.safe_update(pobs, output=tracing.io(payload), metadata={"payload_chars": len(payload or "")})
-    chunks = await chunk_payload(payload, dataset_id, title=title)
+    with tracing.observe_step("ingestion.chunk", as_type="span",
+                              metadata={"payload_chars": len(payload or "")}) as cobs:
+        chunks = await chunk_payload(payload, dataset_id, title=title)
+        tracing.safe_update(cobs, output={"chunks": len(chunks)})
     tracing.fact(payload_chars=len(payload or ""), chunks=len(chunks))
 
     entity_type = get_entity_type(ds)
@@ -185,35 +188,42 @@ async def _process_dataset(ds: Dict[str, Any], tenant_id: str,
     license_str = attrs.get("License") or dinfo.get("license", "")
 
     results = []
-    for chunk in chunks:
-        embed = await generate_embedding(chunk["text"])
-        candidate_metadata = {
-            "tenant_id": tenant_id,
-            "dataset_id": dataset_id,
-            "chunk_id": chunk["chunk_id"],
-            "entity_type": entity_type,
-            "title": attrs.get("Title") or ds.get("title"),
-            "description": attrs.get("Description"),
-            "theme": attrs.get("Theme"),
-            "keywords": attrs.get("Keywords"),
-            "publisher": attrs.get("Publisher") or ds.get("publisher"),
-            "url": url,
-            "format": formats,
-            "license": license_str,
-            "released": attrs.get("Published"),
-            "distribution_ids": attrs.get("DistributionIds"),
-            "parent_dataset_id": attrs.get("BelongsToDataset"),
-            "catalogue": attrs.get("Catalogue"),
-            "source": ds.get("source") or "orion-mongo",
-            "content_hash": chash,
-            "is_nbs": is_nbs,  # NEW
-            "nbs_problems": nbs_problems,  # NEW
-        }
-        metadata = {k: v for k, v in candidate_metadata.items() if v not in (None, "", [])}
-        results.append({
-            "id": chunk["chunk_id"], "embedding": embed,
-            "metadata": metadata, "document": chunk["text"],
-        })
+    with tracing.observe_step("ingestion.embeddings", as_type="span",
+                              input=tracing.io({"texts": [c["text"] for c in chunks]}),
+                              metadata={"chunks": len(chunks),
+                                        "model": os.getenv("OLLAMA_EMBEDDING_MODEL", "")}) as emb_obs:
+        for chunk in chunks:
+            embed = await generate_embedding(chunk["text"])
+            candidate_metadata = {
+                "tenant_id": tenant_id,
+                "dataset_id": dataset_id,
+                "chunk_id": chunk["chunk_id"],
+                "entity_type": entity_type,
+                "title": attrs.get("Title") or ds.get("title"),
+                "description": attrs.get("Description"),
+                "theme": attrs.get("Theme"),
+                "keywords": attrs.get("Keywords"),
+                "publisher": attrs.get("Publisher") or ds.get("publisher"),
+                "url": url,
+                "format": formats,
+                "license": license_str,
+                "released": attrs.get("Published"),
+                "distribution_ids": attrs.get("DistributionIds"),
+                "parent_dataset_id": attrs.get("BelongsToDataset"),
+                "catalogue": attrs.get("Catalogue"),
+                "source": ds.get("source") or "orion-mongo",
+                "content_hash": chash,
+                "is_nbs": is_nbs,  # NEW
+                "nbs_problems": nbs_problems,  # NEW
+            }
+            metadata = {k: v for k, v in candidate_metadata.items() if v not in (None, "", [])}
+            results.append({
+                "id": chunk["chunk_id"], "embedding": embed,
+                "metadata": metadata, "document": chunk["text"],
+            })
+        tracing.safe_update(emb_obs, output={"embeddings": len(results)},
+                            metadata={"chunks": len(chunks),
+                                      "model": os.getenv("OLLAMA_EMBEDDING_MODEL", "")})
     return results
 
 
@@ -271,9 +281,13 @@ async def _index_entity(ds: Dict[str, Any], h: str, tenant_id: str, run_id: str,
                                   input=tracing.io({"id": eid, "type": etype, "source": source,
                                                     "title": attrs.get("Title"),
                                                     "catalogue": attrs.get("Catalogue")}),
-                                  metadata={"content_hash": h, "changed": changed}) as eobs:
+                                  metadata={"content_hash": h, "changed": changed}) as eobs, \
+                tracing.collect_metrics() as emetrics:
             chunks = await _process_dataset(ds, tenant_id, distribution_info, h)
-            tracing.safe_update(eobs, output={"chunks": len(chunks)}, metadata=dict(facts))
+            summary = tracing.metrics_summary(emetrics)
+            tracing.safe_update(eobs, output={"chunks": len(chunks)},
+                                metadata={**facts, **summary,
+                                          "content_hash": h, "changed": changed})
             if isinstance(facts.get("enrichment_terms"), int):
                 tracing.score_trace(eobs, "enrichment_terms", float(facts["enrichment_terms"]),
                                     data_type="NUMERIC")
@@ -281,6 +295,12 @@ async def _index_entity(ds: Dict[str, Any], h: str, tenant_id: str, run_id: str,
                 tracing.score_trace(eobs, "enrichment_status", facts["enrichment_status"],
                                     data_type="CATEGORICAL")
             tracing.score_trace(eobs, "chunks", float(len(chunks)), data_type="NUMERIC")
+            if summary["usage"]["total"]:
+                tracing.score_trace(eobs, "tokens_total", float(summary["usage"]["total"]),
+                                    data_type="NUMERIC")
+            if summary["cost"]["total"]:
+                tracing.score_trace(eobs, "cost_total", float(summary["cost"]["total"]),
+                                    data_type="NUMERIC")
         entity_facts = dict(facts)
     return chunks, entity_facts
 
@@ -455,7 +475,8 @@ async def _run_incremental(tenant_id: str, full_reindex: bool = False,
         "enrichment_terms_avg": round(sum(enrich_terms) / len(enrich_terms), 2) if enrich_terms else None,
         "chunks_start": count_start, "chunks_end": count_end, "batches": batch_num,
     }
-    tracing.safe_update(run, metadata=stats)
+    tracing.safe_update(run, metadata={"index_config": _INDEX_CONFIG, **stats,
+                                       "metrics": tracing.metrics_summary()})
     return {"processed": processed_total, "deleted": len(deleted_ids), "total_datasets": total,
             "unchanged": unchanged, "errors": errors}
 
@@ -465,6 +486,7 @@ async def ingest_tenant(tenant_id: str, full_reindex: bool = False) -> Dict[str,
     _status.start_time = datetime.now()
     _status.last_error = None
     run_id = uuid.uuid4().hex[:12]
+    run_started = time.perf_counter()
     logger.debug(f"Starting ingestion for tenant {tenant_id}, full_reindex={full_reindex} (run {run_id})")
     with tracing.trace_attributes(session_id=f"ingestion-{run_id}", trace_name="ingestion.run",
                                   tags=["ingestion", "run", f"tenant:{tenant_id}"],
@@ -474,10 +496,12 @@ async def ingest_tenant(tenant_id: str, full_reindex: bool = False) -> Dict[str,
                                         "sources": INGEST_SOURCES, "run_id": run_id},
                                  metadata={"index_config": _INDEX_CONFIG})
         try:
-            result = await _run_incremental(tenant_id, full_reindex, run=run, run_id=run_id)
+            with tracing.collect_metrics() as run_metrics:
+                result = await _run_incremental(tenant_id, full_reindex, run=run, run_id=run_id)
         except Exception as exc:
             _status.last_error = f"{type(exc).__name__}: {exc}"
             tracing.safe_update(run, level="ERROR", status_message=_status.last_error[:500])
+            otel.record_ingestion(time.perf_counter() - run_started, errors=1)
             run.end()
             tracing.flush()
             raise
@@ -487,6 +511,13 @@ async def ingest_tenant(tenant_id: str, full_reindex: bool = False) -> Dict[str,
         _status.processed = result["processed"]
         _status.remaining = 0
         _status.last_result = result
+        otel.record_ingestion(time.perf_counter() - run_started,
+                              processed=result.get("processed", 0),
+                              total=result.get("total_datasets", 0),
+                              unchanged=result.get("unchanged", 0),
+                              deleted=result.get("deleted", 0),
+                              errors=result.get("errors", 0))
+        summary = tracing.metrics_summary(run_metrics)
         # output must be set before end(): an ended OTel span ignores new attributes
         tracing.safe_update(run, output=result)
         run.end()
@@ -494,6 +525,12 @@ async def ingest_tenant(tenant_id: str, full_reindex: bool = False) -> Dict[str,
                           ("entities_errors", "errors"), ("chunks_upserted", "processed"),
                           ("entities_deleted", "deleted")):
             tracing.score_trace(run, name, float(result.get(key, 0)), data_type="NUMERIC")
+        for name, key in (("tokens_input", "input"), ("tokens_output", "output"),
+                          ("tokens_total", "total")):
+            tracing.score_trace(run, name, float(summary["usage"][key]), data_type="NUMERIC")
+        if summary["cost"]["total"]:
+            tracing.score_trace(run, "cost_total", float(summary["cost"]["total"]),
+                                data_type="NUMERIC")
         tracing.flush()
     logger.debug(f"Ingestion completed for tenant {tenant_id}: {result}")
     return result

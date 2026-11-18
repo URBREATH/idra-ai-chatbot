@@ -1,3 +1,4 @@
+import time
 import uuid
 
 from fastapi import APIRouter, Header
@@ -8,7 +9,7 @@ from app.chat.services.chat_service import generate_answer
 from app.common.guards.tenant_guard import resolve_tenant
 from app.auth import extract_user_id_from_keycloak_token, require_admin_authorization
 from app.conversation import services as conversation_services
-from app.observability import tracing
+from app.observability import otel, tracing
 
 router = APIRouter()
 
@@ -37,6 +38,7 @@ async def chat_endpoint(
 
     # One Langfuse trace per answer; the conversation is the Langfuse session.
     # A random (generated) user id is not a real user: do not send it.
+    chat_started = time.perf_counter()
     with tracing.trace_attributes(
         session_id=conversation_id,
         user_id=request.userId or None,
@@ -51,19 +53,28 @@ async def chat_endpoint(
             # generate_answer() already persists both user and assistant messages
             # internally (via append_user_message and _respond), so we must NOT
             # save them here as well — that would duplicate every message.
-            response = await generate_answer(
-                message=request.message,
-                conversation_id=conversation_id,
-                tenant_id=tenant_id,
-                user_id=user_id,
-                model=request.model,
-            )
+            try:
+                response = await generate_answer(
+                    message=request.message,
+                    conversation_id=conversation_id,
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    model=request.model,
+                )
+            except Exception as exc:
+                otel.record_chat(time.perf_counter() - chat_started, exit_path="error",
+                                 model=facts.get("model") or "unknown")
+                otel.annotate_current_span(**{"idra.error": type(exc).__name__})
+                raise
             tracing.safe_update(root, output=tracing.io({
                 "answer": response.answer,
                 "sources": [{"title": s.title, "datasetId": s.datasetId, "url": s.url} for s in response.sources],
             }), metadata=dict(facts))
             emit_chat_scores(root, facts)
             response.traceId = root.trace_id
+            otel.record_chat(time.perf_counter() - chat_started,
+                             exit_path=str(facts.get("exit_path") or "unknown"),
+                             model=str(facts.get("model") or "unknown"))
 
     # Ensure response includes conversation ID
     response.conversationId = conversation_id
@@ -73,12 +84,26 @@ async def chat_endpoint(
 def emit_chat_scores(root, facts: dict) -> None:
     """Automatic, per-trace scores: aggregatable in Langfuse dashboards to study
     retrieval quality and pipeline behaviour statistically."""
+    candidates = facts.get("candidates")
+    kept = facts.get("candidates_kept")
+    threshold = facts.get("threshold_final")
+    best = facts.get("best_distance")
+    precision = (kept / candidates) if isinstance(kept, (int, float)) and candidates else None
+    score_gap = (round(float(threshold) - float(best), 4)
+                 if isinstance(threshold, (int, float)) and isinstance(best, (int, float)) else None)
     numeric = {
-        "retrieval_best_distance": facts.get("best_distance"),
-        "retrieval_candidates_kept": facts.get("candidates_kept"),
-        "retrieval_threshold_final": facts.get("threshold_final"),
+        "retrieval_best_distance": best,
+        "retrieval_candidates_total": candidates,
+        "retrieval_candidates_kept": kept,
+        "retrieval_threshold_final": threshold,
+        "retrieval_precision_proxy": precision,
+        "retrieval_score_gap": score_gap,
+        "retrieval_latency_ms": facts.get("retrieval_ms"),
         "answer_sources": facts.get("sources_returned"),
+        "answer_chars": facts.get("answer_chars"),
         "context_resources": facts.get("context_resources"),
+        "context_chars": facts.get("context_chars"),
+        "prompt_chars": facts.get("prompt_chars"),
         "invented_links_removed": facts.get("invented_links"),
     }
     for name, value in numeric.items():
@@ -88,12 +113,15 @@ def emit_chat_scores(root, facts: dict) -> None:
         "retrieval_threshold_relaxed": facts.get("threshold_relaxed"),
         "answer_no_result": facts.get("exit_path") == "no_result" if "exit_path" in facts else None,
         "answer_cited_resource": facts.get("cited_resource"),
+        "answer_has_sources": (facts.get("sources_returned") or 0) > 0 if "sources_returned" in facts else None,
         "nbs_mode": facts.get("nbs_mode"),
     }
     for name, value in booleans.items():
         if isinstance(value, bool):
             tracing.score_trace(root, name, value)
-    for name, key in (("exit_path", "exit_path"), ("language", "language"), ("rerank_method", "rerank_method")):
+    for name, key in (("exit_path", "exit_path"), ("language", "language"),
+                      ("language_method", "language_method"), ("rerank_method", "rerank_method"),
+                      ("prompt_type", "prompt_type")):
         if facts.get(key):
             tracing.score_trace(root, name, str(facts[key]), data_type="CATEGORICAL")
 
