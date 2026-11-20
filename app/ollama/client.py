@@ -358,12 +358,12 @@ async def generate_batch_embeddings(
     if not texts:
         return []
 
-    # If external API, we can do batching (e.g. in batches of 32)
+    # If external API, we can do batching (default 500)
     if is_external_api_enabled():
         base = get_api_base()
         results: list[list[float]] = []
         total_tokens = 0
-        batch_size = 32
+        batch_size = int(os.getenv("EMBEDDING_BATCH_SIZE", "500"))
         started = time.perf_counter()
         success = False
         error_type = None

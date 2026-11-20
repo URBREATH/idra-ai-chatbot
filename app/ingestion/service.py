@@ -188,45 +188,35 @@ async def _process_dataset(ds: Dict[str, Any], tenant_id: str,
     license_str = attrs.get("License") or dinfo.get("license", "")
 
     results = []
-    with tracing.observe_step("ingestion.embeddings", as_type="span",
-                              input=tracing.io({"texts": [c["text"] for c in chunks]}),
-                              metadata={"chunks": len(chunks),
-                                        "model": os.getenv("OLLAMA_EMBEDDING_MODEL", "")}) as emb_obs:
-        texts = [c["text"] for c in chunks]
-        embeddings = await generate_batch_embeddings(texts)
-        if len(embeddings) != len(chunks):
-            raise ValueError(f"expected {len(chunks)} embeddings, got {len(embeddings)}")
-        for chunk, embed in zip(chunks, embeddings):
-            candidate_metadata = {
-                "tenant_id": tenant_id,
-                "dataset_id": dataset_id,
-                "chunk_id": chunk["chunk_id"],
-                "entity_type": entity_type,
-                "title": attrs.get("Title") or ds.get("title"),
-                "description": attrs.get("Description"),
-                "theme": attrs.get("Theme"),
-                "keywords": attrs.get("Keywords"),
-                "publisher": attrs.get("Publisher") or ds.get("publisher"),
-                "url": url,
-                "format": formats,
-                "license": license_str,
-                "released": attrs.get("Published"),
-                "distribution_ids": attrs.get("DistributionIds"),
-                "parent_dataset_id": attrs.get("BelongsToDataset"),
-                "catalogue": attrs.get("Catalogue"),
-                "source": ds.get("source") or "orion-mongo",
-                "content_hash": chash,
-                "is_nbs": is_nbs,  # NEW
-                "nbs_problems": nbs_problems,  # NEW
-            }
-            metadata = {k: v for k, v in candidate_metadata.items() if v not in (None, "", [])}
-            results.append({
-                "id": chunk["chunk_id"], "embedding": embed,
-                "metadata": metadata, "document": chunk["text"],
-            })
-        tracing.safe_update(emb_obs, output={"embeddings": len(results)},
-                            metadata={"chunks": len(chunks),
-                                      "model": os.getenv("OLLAMA_EMBEDDING_MODEL", "")})
+    for chunk in chunks:
+        candidate_metadata = {
+            "tenant_id": tenant_id,
+            "dataset_id": dataset_id,
+            "chunk_id": chunk["chunk_id"],
+            "entity_type": entity_type,
+            "title": attrs.get("Title") or ds.get("title"),
+            "description": attrs.get("Description"),
+            "theme": attrs.get("Theme"),
+            "keywords": attrs.get("Keywords"),
+            "publisher": attrs.get("Publisher") or ds.get("publisher"),
+            "url": url,
+            "format": formats,
+            "license": license_str,
+            "released": attrs.get("Published"),
+            "distribution_ids": attrs.get("DistributionIds"),
+            "parent_dataset_id": attrs.get("BelongsToDataset"),
+            "catalogue": attrs.get("Catalogue"),
+            "source": ds.get("source") or "orion-mongo",
+            "content_hash": chash,
+            "is_nbs": is_nbs,  # NEW
+            "nbs_problems": nbs_problems,  # NEW
+        }
+        metadata = {k: v for k, v in candidate_metadata.items() if v not in (None, "", [])}
+        results.append({
+            "id": chunk["chunk_id"],
+            "metadata": metadata,
+            "document": chunk["text"],
+        })
     return results
 
 
@@ -234,12 +224,24 @@ def _delete_from_collection(collection, dataset_ids: List[str]) -> None:
     delete_documents_from_collection(collection, dataset_ids)
 
 
-def _flush_to_chroma(collection, buffer: List[Dict[str, Any]], batch_num: int) -> int:
+async def _flush_to_chroma(collection, buffer: List[Dict[str, Any]], batch_num: int) -> int:
     if not buffer:
         logger.debug(f"[upsert] batch #{batch_num}: empty buffer")
         return 0
+
+    texts = [c["document"] for c in buffer]
+    with tracing.observe_step("ingestion.embeddings", as_type="span",
+                              input=tracing.io({"texts": texts}),
+                              metadata={"chunks": len(texts),
+                                        "model": os.getenv("OLLAMA_EMBEDDING_MODEL", "")}) as emb_obs:
+        embeddings = await generate_batch_embeddings(texts)
+        if len(embeddings) != len(texts):
+            raise ValueError(f"expected {len(texts)} embeddings, got {len(embeddings)}")
+        tracing.safe_update(emb_obs, output={"embeddings": len(embeddings)},
+                            metadata={"chunks": len(texts),
+                                      "model": os.getenv("OLLAMA_EMBEDDING_MODEL", "")})
+
     ids = [c["id"] for c in buffer]
-    embeddings = [c["embedding"] for c in buffer]
     metadatas = [c["metadata"] for c in buffer]
     documents = [c["document"] for c in buffer]
     empty_docs = sum(1 for d in documents if not d)
@@ -417,12 +419,12 @@ async def _run_incremental(tenant_id: str, full_reindex: bool = False,
     enrich_status: Dict[str, int] = {}
     enrich_terms: List[int] = []
 
-    def _flush() -> int:
+    async def _flush() -> int:
         nonlocal batch_num
         batch_num += 1
         with tracing.observe_step("ingestion.chroma_upsert", as_type="tool", parent=run,
                                   input={"batch": batch_num, "chunks": len(buffer)}) as obs:
-            n = _flush_to_chroma(collection, buffer, batch_num)
+            n = await _flush_to_chroma(collection, buffer, batch_num)
             tracing.safe_update(obs, output={"upserted": n})
         return n
 
@@ -447,12 +449,12 @@ async def _run_incremental(tenant_id: str, full_reindex: bool = False,
         _status.remaining = total - i
 
         if len(buffer) >= BATCH_SIZE:
-            processed_total += _flush()
+            processed_total += await _flush()
             _status.processed = processed_total
             buffer = []
 
     if buffer:
-        processed_total += _flush()
+        processed_total += await _flush()
         _status.processed = processed_total
         buffer = []
 
